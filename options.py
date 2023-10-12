@@ -25,7 +25,13 @@ def parse_args() -> argparse.Namespace:
                         help="name of dataset")
     parser.add_argument('--num_classes', type=int,
                         default=10, help="number of classes")
+    parser.add_argument('--lam', type=float, default=1.0,
+                        help='coefficient for reg term')
     parser.add_argument('--device', default='cpu',
                         help="To use cuda, set to a specific GPU ID. Default set to use CPU.")
+    parser.add_argument('--beta', type=float, default=0.5,
+                        help='The parameter for the dirichlet distribution for data partitioning')
+    parser.add_argument('--noniid_percent', type=int, default=80,
+                        help='Default set to 0.8 Set to 0.0 for IID.')
     args = parser.parse_args()
     return args

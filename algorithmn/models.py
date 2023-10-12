@@ -5,6 +5,7 @@ from torch import FloatTensor
 
 @dataclass
 class LocalTrainResult:
+    protos: Dict[int, Any] = field(default_factory=dict)
     weights: Dict[str, Any] = field(default_factory=dict)
     loss_map: Dict[str, float | FloatTensor] = field(default_factory=dict)
     acc_map: Dict[str, float | FloatTensor] = field(default_factory=dict)

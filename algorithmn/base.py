@@ -21,6 +21,7 @@ class FedClientBase:
         self.writer = writer
         self.device = args.device
         self.criterion = nn.CrossEntropyLoss()
+        self.global_protos = None
 
     @abstractmethod
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
@@ -47,6 +48,10 @@ class FedClientBase:
         data_size = len(self.train_loader.dataset)
         w = torch.tensor(data_size).to(self.device)
         return w
+
+    @staticmethod
+    def update_global_protos(self, global_protos):
+        self.global_protos = global_protos
 
     @abstractmethod
     def update_local_model(self, global_weight: Dict[str, Any]):

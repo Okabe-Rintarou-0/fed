@@ -39,7 +39,8 @@ if __name__ == '__main__':
 
     train_rule = args.train_rule
     # Set up tensorboard summary writer
-    tensorboard_path = os.path.join('./tensorboard', train_rule)
+    sub_dir_name = train_rule if args.iid else f'{train_rule}_non_iid'
+    tensorboard_path = os.path.join('./tensorboard', sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
