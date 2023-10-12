@@ -163,3 +163,4 @@ def get_model(args: Namespace) -> nn.Module:
         global_model = CNN_FMNIST(num_classes=args.num_classes).to(device)
     else:
         raise NotImplementedError()
+    return global_model

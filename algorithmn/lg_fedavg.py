@@ -9,15 +9,15 @@ from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
+from tools import aggregate_weights
 
 
-class FedStandAloneServer(FedServerBase):
+class LgFedAvgServer(FedServerBase):
     def __init__(self, args: Namespace, global_model: nn.Module, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(
-            f'\n---- FedStandAlone Global Communication Round : {round} ----')
+        print(f'\n---- Lg_FedAvg Global Communication Round : {round} ----')
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if (round >= self.args.epochs):
@@ -25,6 +25,9 @@ class FedStandAloneServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
+        global_weight = self.global_model.state_dict()
+        agg_weights = []
+        local_weights = []
         local_losses = []
         local_acc1s = []
         local_acc2s = []
@@ -35,13 +38,17 @@ class FedStandAloneServer(FedServerBase):
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
+            agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
+            local_client.update_local_model(global_weight=global_weight)
             result = local_client.local_train(
                 local_epoch=local_epoch, round=round)
+            w = result.weights
             local_loss = result.loss_map['round_loss']
             local_acc1 = result.acc_map['acc1']
             local_acc2 = result.acc_map['acc2']
 
+            local_weights.append(copy.deepcopy(w))
             local_losses.append(local_loss)
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
@@ -49,6 +56,11 @@ class FedStandAloneServer(FedServerBase):
             acc1_dict[f'client_{idx}'] = local_acc1
             acc2_dict[f'client_{idx}'] = local_acc2
             loss_dict[f'client_{idx}'] = local_loss
+
+        # get global weights
+        global_weight = aggregate_weights(local_weights, agg_weights)
+        # update global model
+        self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
@@ -69,9 +81,19 @@ class FedStandAloneServer(FedServerBase):
         return result
 
 
-class FedStandAloneClient(FedClientBase):
+class LgFedAvgClient(FedClientBase):
     def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None = None):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer)
+        # the local_weights in LG_FedAvg are representation layers
+        self.w_local_keys = self.local_model.base_weight_keys
+
+    def update_local_model(self, global_weight):
+        local_weight = self.local_model.state_dict()
+        w_local_keys = self.w_local_keys
+        for k in local_weight.keys():
+            if k not in w_local_keys:
+                local_weight[k] = global_weight[k]
+        self.local_model.load_state_dict(local_weight)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')
@@ -99,6 +121,7 @@ class FedStandAloneClient(FedClientBase):
 
         acc2 = self.local_test()
 
+        result.weights = model.state_dict()
         result.acc_map['acc1'] = acc1
         result.acc_map['acc2'] = acc2
         round_loss = np.sum(round_losses) / len(round_losses)

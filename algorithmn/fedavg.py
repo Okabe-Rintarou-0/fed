@@ -17,7 +17,7 @@ class FedAvgServer(FedServerBase):
         super().__init__(args, global_model, clients, writer)
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f'\n---- FedAvg Global Communication Round : {round+1} ----')
+        print(f'\n---- FedAvg Global Communication Round : {round} ----')
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if (round >= self.args.epochs):
@@ -64,7 +64,7 @@ class FedAvgServer(FedServerBase):
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
-        acc_avg2 = sum(local_acc2s) / len(local_acc2s)  
+        acc_avg2 = sum(local_acc2s) / len(local_acc2s)
 
         result = GlobalTrainResult(loss_map={
             'loss_avg': loss_avg
@@ -84,7 +84,6 @@ class FedAvgServer(FedServerBase):
 class FedAvgClient(FedClientBase):
     def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None = None):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer)
-        self.criterion = nn.CrossEntropyLoss()
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')
@@ -109,7 +108,7 @@ class FedAvgClient(FedClientBase):
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())
-        
+
         acc2 = self.local_test()
 
         result.weights = model.state_dict()
@@ -117,25 +116,13 @@ class FedAvgClient(FedClientBase):
         result.acc_map['acc2'] = acc2
         round_loss = np.sum(round_losses) / len(round_losses)
         result.loss_map['round_loss'] = round_loss
-        print(f'[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}')
+        print(
+            f'[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}')
 
         if self.writer is not None:
-            self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-            self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
+            self.writer.add_scalars(
+                f"client_{self.idx}_acc", result.acc_map, round)
+            self.writer.add_scalar(
+                f"client_{self.idx}_loss", round_loss, round)
 
         return result
-
-    def local_test(self) -> float:
-        model = self.local_model
-        model.eval()
-        device = self.args.device
-        correct = 0
-        total = len(self.test_loader.dataset)
-        with torch.no_grad():
-            for inputs, labels in self.test_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                _, outputs = model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                correct += (predicted == labels).sum().item()
-        acc = 100.0*correct/total
-        return acc

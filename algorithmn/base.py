@@ -20,6 +20,7 @@ class FedClientBase:
         self.local_model = local_model
         self.writer = writer
         self.device = args.device
+        self.criterion = nn.CrossEntropyLoss()
 
     @abstractmethod
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
@@ -27,7 +28,19 @@ class FedClientBase:
 
     @abstractmethod
     def local_test(self) -> float:
-        pass
+        model = self.local_model
+        model.eval()
+        device = self.args.device
+        correct = 0
+        total = len(self.test_loader.dataset)
+        with torch.no_grad():
+            for inputs, labels in self.test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                _, outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                correct += (predicted == labels).sum().item()
+        acc = 100.0*correct/total
+        return acc
 
     @abstractmethod
     def agg_weight(self) -> torch.tensor:

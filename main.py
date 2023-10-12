@@ -3,9 +3,10 @@ import os
 import numpy as np
 import torch
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
+from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
+from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from data_loader import get_dataloaders, get_model
-from models.cnn import CNN_FMNIST, CifarCNN
 from options import parse_args
 from tensorboardX import SummaryWriter
 
@@ -13,12 +14,16 @@ from tools import write_client_datasets
 
 FL_CLIENT = {
     'FedStandAlone': FedStandAloneClient,
-    'FedAvg': FedAvgClient
+    'FedAvg': FedAvgClient,
+    'Lg_FedAvg': LgFedAvgClient,
+    'FedPer': FedPerClient
 }
 
 FL_SERVER = {
     'FedStandAlone': FedStandAloneServer,
-    'FedAvg': FedAvgServer
+    'FedAvg': FedAvgServer,
+    'Lg_FedAvg': LgFedAvgServer,
+    'FedPer': FedPerServer
 }
 
 if __name__ == '__main__':
