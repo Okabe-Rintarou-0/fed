@@ -9,7 +9,7 @@ from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
-from tools import aggregate_weights, get_protos
+from tools import aggregate_protos, aggregate_weights, get_protos
 
 
 class FedL2RegServer(FedServerBase):
@@ -25,12 +25,13 @@ class FedL2RegServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_model.state_dict()
         agg_weights = []
         local_weights = []
         local_losses = []
         local_acc1s = []
         local_acc2s = []
+        local_protos = []
+        label_sizes = []
 
         acc1_dict = {}
         acc2_dict = {}
@@ -40,7 +41,6 @@ class FedL2RegServer(FedServerBase):
             local_client: FedClientBase = self.clients[idx]
             agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
-            local_client.update_local_model(global_weight=global_weight)
             result = local_client.local_train(
                 local_epoch=local_epoch, round=round)
             w = result.weights
@@ -52,6 +52,8 @@ class FedL2RegServer(FedServerBase):
             local_losses.append(local_loss)
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
+            local_protos.append(result.protos)
+            label_sizes.append(local_client.label_distribution())
 
             acc1_dict[f'client_{idx}'] = local_acc1
             acc2_dict[f'client_{idx}'] = local_acc2
@@ -61,6 +63,12 @@ class FedL2RegServer(FedServerBase):
         global_weight = aggregate_weights(local_weights, agg_weights)
         # update global model
         self.global_model.load_state_dict(global_weight)
+        # update global prototype
+        global_protos = aggregate_protos(local_protos, label_sizes)
+
+        for local_client in self.clients:
+            local_client.update_local_model(global_weight=global_weight)
+            local_client.update_global_protos(global_protos=global_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)

@@ -3,27 +3,33 @@ import os
 import numpy as np
 import torch
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
+from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
 from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
+from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 from data_loader import get_dataloaders, get_model
 from options import parse_args
 from tensorboardX import SummaryWriter
 
-from tools import write_client_datasets
+from tools import write_client_datasets, write_client_label_distribution
 
 FL_CLIENT = {
     'FedStandAlone': FedStandAloneClient,
     'FedAvg': FedAvgClient,
     'Lg_FedAvg': LgFedAvgClient,
-    'FedPer': FedPerClient
+    'FedPer': FedPerClient,
+    'FedL2Reg': FedL2RegClient,
+    'pFedGraph': PFedGraphClient
 }
 
 FL_SERVER = {
     'FedStandAlone': FedStandAloneServer,
     'FedAvg': FedAvgServer,
     'Lg_FedAvg': LgFedAvgServer,
-    'FedPer': FedPerServer
+    'FedPer': FedPerServer,
+    'FedL2Reg': FedL2RegServer,
+    'pFedGraph': PFedGraphServer
 }
 
 if __name__ == '__main__':
@@ -55,13 +61,16 @@ if __name__ == '__main__':
     local_accs1, local_accs2 = [], []
     local_clients = []
     for idx in range(args.num_clients):
+        train_loader = train_loaders[idx]
+        test_loader = test_loaders[idx]
         client = Client(idx=idx, args=args,
-                        train_loader=train_loaders[idx],
-                        test_loader=test_loaders[idx],
+                        train_loader=train_loader,
+                        test_loader=test_loader,
                         local_model=deepcopy(global_model),
                         writer=writer)
-        write_client_datasets(idx, writer, train_loaders[idx], True)
-        write_client_datasets(idx, writer, test_loaders[idx], False)
+        write_client_datasets(idx, writer, train_loader, True)
+        write_client_datasets(idx, writer, test_loader, False)
+        write_client_label_distribution(idx, writer, train_loader, args.num_classes)
         local_clients.append(client)
 
     server = Server(args=args, global_model=global_model,

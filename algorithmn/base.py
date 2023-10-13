@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader
 from torch import nn
 import numpy as np
 
+from tools import calc_label_distribution
+
 
 class FedClientBase:
     @abstractmethod
@@ -22,6 +24,10 @@ class FedClientBase:
         self.device = args.device
         self.criterion = nn.CrossEntropyLoss()
         self.global_protos = None
+
+    @abstractmethod
+    def label_distribution(self):
+        return calc_label_distribution(self.train_loader, self.args.num_classes)
 
     @abstractmethod
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:

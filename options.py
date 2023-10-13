@@ -31,6 +31,8 @@ def parse_args() -> argparse.Namespace:
                         help="To use cuda, set to a specific GPU ID. Default set to use CPU.")
     parser.add_argument('--beta', type=float, default=0.5,
                         help='The parameter for the dirichlet distribution for data partitioning')
+    parser.add_argument('--alpha', type=float, default=0.8,
+                        help='Hyper-parameter to avoid concentration')
     parser.add_argument('--noniid_percent', type=int, default=80,
                         help='Default set to 0.8 Set to 0.0 for IID.')
     args = parser.parse_args()

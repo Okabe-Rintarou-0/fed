@@ -164,14 +164,10 @@ def cifar10_noniid(dataset: datasets.CIFAR10, num_clients: int, noniid_percent: 
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
 
 
-def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: float, batch_size: int, shuffle: bool):
+def dirichlet_partition(num_dataset: int, num_clients: int, targets: np.array, beta: float) -> List[List[int]]:
     min_size = 0
     min_require_size = 10
-    num_classes = len(np.unique(dataset.targets))
-    client_idxs = []
-    num_dataset = len(dataset)
-    targets = np.array(dataset.targets)
-
+    num_classes = len(np.unique(targets))
     while min_size < min_require_size:
         client_idxs = [[] for _ in range(num_clients)]
         for k in range(num_classes):
@@ -183,7 +179,7 @@ def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: 
                 np.repeat(beta, num_clients))
             # if exceed the max num (namely num_dataset / num_clients), drop it
             proportions = np.array([p * (len(idx_j) < num_dataset / num_clients)
-                                   for p, idx_j in zip(proportions, client_idxs)])
+                                    for p, idx_j in zip(proportions, client_idxs)])
             # normalize
             proportions = proportions / proportions.sum()
             proportions = (np.cumsum(proportions) *
@@ -194,7 +190,13 @@ def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: 
 
     for _ in range(num_clients):
         np.random.shuffle(client_idxs)
+    return client_idxs
 
+
+def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: float, batch_size: int, shuffle: bool):
+    num_dataset = len(dataset)
+    targets = np.array(dataset.targets)
+    client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
 
 
