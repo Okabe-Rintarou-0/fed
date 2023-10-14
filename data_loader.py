@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch import nn
 
 from models.cnn import CNN_FMNIST, CifarCNN
+from models.resnet import CifarResnet
 
 DATASET_PATH = './data'
 
@@ -96,7 +97,6 @@ def cifar10_noniid(dataset: datasets.CIFAR10, num_clients: int, noniid_percent: 
     """
     Sample non-I.I.D client data from MNIST dataset
     """
-    noniid_percent = noniid_percent/100
     num_per_client = local_size if train else 300
     num_classes = len(np.unique(dataset.targets))
 
@@ -284,3 +284,15 @@ def get_model(args: Namespace) -> nn.Module:
     else:
         raise NotImplementedError()
     return global_model
+
+
+def get_heterogeneous_model(args: Namespace) -> nn.Module:
+    dataset = args.dataset
+    device = args.device
+    if dataset in ['cifar', 'cifar10', 'cinic', 'cinic_sep']:
+        heterogeneous_model = CifarResnet(
+            num_classes=args.num_classes).to(device)
+        args.lr = 0.02
+    else:
+        raise NotImplementedError()
+    return heterogeneous_model

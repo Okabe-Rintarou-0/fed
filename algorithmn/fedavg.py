@@ -9,12 +9,14 @@ from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
+from models.base import FedModel
 from tools import aggregate_weights
 
 
 class FedAvgServer(FedServerBase):
-    def __init__(self, args: Namespace, global_model: nn.Module, clients: List[FedClientBase], writer: SummaryWriter | None = None):
+    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
+        self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f'\n---- FedAvg Global Communication Round : {round} ----')
@@ -58,7 +60,7 @@ class FedAvgServer(FedServerBase):
             loss_dict[f'client_{idx}'] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(local_weights, agg_weights)
+        global_weight = aggregate_weights(local_weights, agg_weights, self.client_aggregatable_weights)
         # update global model
         self.global_model.load_state_dict(global_weight)
 
@@ -82,7 +84,7 @@ class FedAvgServer(FedServerBase):
 
 
 class FedAvgClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None = None):
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:

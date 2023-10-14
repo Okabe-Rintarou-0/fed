@@ -1,5 +1,6 @@
 from copy import deepcopy
 import os
+import random
 import numpy as np
 import torch
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
@@ -8,7 +9,7 @@ from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
-from data_loader import get_dataloaders, get_model
+from data_loader import get_dataloaders, get_heterogeneous_model, get_model
 from options import parse_args
 from tensorboardX import SummaryWriter
 
@@ -40,12 +41,23 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
+    heterogeneous_model = None
+    if args.model_het:
+        heterogeneous_model = get_heterogeneous_model(args)
+
     # construct model
     global_model = get_model(args)
 
     train_rule = args.train_rule
     # Set up tensorboard summary writer
-    sub_dir_name = train_rule if args.iid else f'{train_rule}_non_iid'
+    sub_dir_name = train_rule
+    if args.prob:
+        sub_dir_name = f'{sub_dir_name}_prob'
+    if not args.iid:
+        sub_dir_name = f'{sub_dir_name}_non_iid'
+    if args.model_het:
+        sub_dir_name = f'{sub_dir_name}_model_het'
+
     tensorboard_path = os.path.join('./tensorboard', sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
@@ -60,17 +72,29 @@ if __name__ == '__main__':
     test_accs = []
     local_accs1, local_accs2 = [], []
     local_clients = []
-    for idx in range(args.num_clients):
+
+    heterogeneous_clients = []
+    client_idxs = list(range(args.num_clients))
+    if args.model_het:
+        sample_size = int(args.model_het_percent * args.num_clients)
+        heterogeneous_clients = random.sample(client_idxs, sample_size)
+        print('heterogeneous clients:', heterogeneous_clients)
+
+    for idx in client_idxs:
+        local_model = deepcopy(global_model) if idx not in heterogeneous_clients \
+            else deepcopy(heterogeneous_model)
+
         train_loader = train_loaders[idx]
         test_loader = test_loaders[idx]
         client = Client(idx=idx, args=args,
                         train_loader=train_loader,
                         test_loader=test_loader,
-                        local_model=deepcopy(global_model),
+                        local_model=local_model,
                         writer=writer)
         write_client_datasets(idx, writer, train_loader, True)
         write_client_datasets(idx, writer, test_loader, False)
-        write_client_label_distribution(idx, writer, train_loader, args.num_classes)
+        write_client_label_distribution(
+            idx, writer, train_loader, args.num_classes)
         local_clients.append(client)
 
     server = Server(args=args, global_model=global_model,

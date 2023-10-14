@@ -1,16 +1,24 @@
-import torch
+from typing import List
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributions as distributions
+from models.base import FedModel
 
 
-class CifarCNN(nn.Module):
-    def __init__(self, num_classes=10):
+class CifarCNN(FedModel):
+    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, model_het=False):
         super(CifarCNN, self).__init__()
+        self.probabilistic = probabilistic
+        self.num_samples = num_samples
+        self.model_het = model_het
+
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, padding=0)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 32, 5, padding=1)
         self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
-        self.fc1 = nn.Linear(64 * 3 * 3, 128)
+
+        out_dim = 256 if probabilistic else 128
+        self.fc1 = nn.Linear(64 * 3 * 3, out_dim)
         self.fc2 = nn.Linear(128, num_classes, bias=True)
         self.base_weight_keys = [
             'conv1.weight', 'conv1.bias',
@@ -23,23 +31,32 @@ class CifarCNN(nn.Module):
         ]
 
     def forward(self, x):
+        # --------- Extract Features --------- #
         x = self.pool(F.leaky_relu(self.conv1(x)))
         x = self.pool(F.leaky_relu(self.conv2(x)))
         x = self.pool(F.leaky_relu(self.conv3(x)))
         x = x.view(-1, self.num_flat_features(x))
-        x = F.leaky_relu(self.fc1(x))
-        y = self.fc2(x)
-        return x, y
+        x = self.fc1(x)
 
-    def feature2logit(self, x):
-        return self.fc2(x)
+        if not self.probabilistic:
+            z = F.leaky_relu(x)
+        else:
+            z_params = x
+            z_mu = z_params[:, :128]
+            z_sigma = F.softplus(z_params[:, 128:])
+            z_dist = distributions.Independent(
+                distributions.normal.Normal(z_mu, z_sigma), 1)
+            z = z_dist.rsample([self.num_samples]).view([-1, 128])
 
-    def num_flat_features(self, x):
-        size = x.size()[1:]
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
+        # --------- Classifier --------- #
+        y = self.fc2(z)
+        return z, y
+
+    def get_aggregatable_weights(self) -> List[str]:
+        if not self.model_het:
+            return list(self.state_dict().keys())
+        # in this case, only classfier can be shared
+        return self.classifier_weight_keys
 
 
 class CNN_FMNIST(nn.Module):
@@ -62,13 +79,3 @@ class CNN_FMNIST(nn.Module):
         x = F.leaky_relu(self.fc1(x))
         y = self.fc2(x)
         return x, y
-
-    def feature2logit(self, x):
-        return self.fc2(x)
-
-    def num_flat_features(self, x):
-        size = x.size()[1:]
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features

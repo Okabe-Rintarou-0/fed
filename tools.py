@@ -11,7 +11,7 @@ import cvxpy as cp
 from models import CifarCNN
 
 
-def aggregate_weights(w: List[Dict[str, Any]], agg_weight) -> Dict[str, Any]:
+def aggregate_weights(w: List[Dict[str, Any]], agg_weight: List[float], aggregatable_weights: List[str] | None = None) -> Dict[str, Any]:
     """
     Returns the average of the weights.
     """
@@ -19,9 +19,12 @@ def aggregate_weights(w: List[Dict[str, Any]], agg_weight) -> Dict[str, Any]:
     weight = torch.tensor(agg_weight)
     agg_w = weight/(weight.sum(dim=0))
     for key in w_avg.keys():
+        if aggregatable_weights is not None and key not in aggregatable_weights:
+            continue
         w_avg[key] = torch.zeros_like(w_avg[key])
         for i in range(len(w)):
             w_avg[key] += agg_w[i]*w[i][key]
+
     return w_avg
 
 
@@ -32,12 +35,13 @@ def aggregate_personalized_model(client_idxs: List[int], weights_map: Dict[int, 
         tmp_client_weights_map[client_idx] = {}
         agg_vector = adjacency_matrix[client_idx]
         for key in model_i:
-            tmp_client_weights_map[client_idx][key] = torch.zeros_like(model_i[key])
+            tmp_client_weights_map[client_idx][key] = torch.zeros_like(
+                model_i[key])
             for neighbor_idx in client_idxs:
                 neighbor_model = weights_map[neighbor_idx]
-                tmp_client_weights_map[client_idx][key] += neighbor_model[key] * agg_vector[neighbor_idx]
+                tmp_client_weights_map[client_idx][key] += neighbor_model[key] * \
+                    agg_vector[neighbor_idx]
     return tmp_client_weights_map
-                
 
 
 def aggregate_protos(local_protos_list, local_label_sizes_list):

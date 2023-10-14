@@ -9,11 +9,14 @@ from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
-from tools import aggregate_personalized_model, aggregate_weights, update_adjacency_matrix
+from models.base import FedModel
+from tools import aggregate_personalized_model, update_adjacency_matrix
+
+# reference: https://github.com/MediaBrain-SJTU/pFedGraph
 
 
 class PFedGraphServer(FedServerBase):
-    def __init__(self, args: Namespace, global_model: nn.Module, clients: List[FedClientBase], writer: SummaryWriter | None = None):
+    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
         self.initial_global_parameters = global_model.state_dict()
         num_clients = len(clients)
@@ -21,7 +24,7 @@ class PFedGraphServer(FedServerBase):
             (num_clients, num_clients)) / num_clients
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f'\n---- FedAvg Global Communication Round : {round} ----')
+        print(f'\n---- pFedGraph Global Communication Round : {round} ----')
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if (round >= self.args.epochs):
@@ -97,7 +100,7 @@ class PFedGraphServer(FedServerBase):
 
 
 class PFedGraphClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None = None):
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:

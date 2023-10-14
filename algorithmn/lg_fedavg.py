@@ -9,11 +9,12 @@ from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
+from models.base import FedModel
 from tools import aggregate_weights
 
 
 class LgFedAvgServer(FedServerBase):
-    def __init__(self, args: Namespace, global_model: nn.Module, clients: List[FedClientBase], writer: SummaryWriter | None = None):
+    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
@@ -82,7 +83,7 @@ class LgFedAvgServer(FedServerBase):
 
 
 class LgFedAvgClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None = None):
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer)
         # the local_weights in LG_FedAvg are representation layers
         self.w_local_keys = self.local_model.base_weight_keys

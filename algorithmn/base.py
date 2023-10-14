@@ -7,14 +7,14 @@ import torch
 from algorithmn.models import LocalTrainResult
 from torch.utils.data import DataLoader
 from torch import nn
-import numpy as np
+from models.base import FedModel
 
 from tools import calc_label_distribution
 
 
 class FedClientBase:
     @abstractmethod
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: nn.Module, writer: SummaryWriter | None):
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None):
         self.idx = idx
         self.args = args
         self.train_loader = train_loader
@@ -61,11 +61,17 @@ class FedClientBase:
 
     @abstractmethod
     def update_local_model(self, global_weight: Dict[str, Any]):
-        self.local_model.load_state_dict(global_weight)
+        local_weight = self.local_model.state_dict()
+        can_agg_weights = self.local_model.get_aggregatable_weights()
+        for k in global_weight.keys():
+            if k in can_agg_weights:
+                local_weight[k] = global_weight[k]
+        self.local_model.load_state_dict(local_weight)
+
 
 class FedServerBase:
     @abstractmethod
-    def __init__(self, args: Namespace, global_model: nn.Module, clients: List[FedClientBase], writer: SummaryWriter | None):
+    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None):
         self.args = args
         self.global_model = global_model
         self.clients = clients
@@ -74,5 +80,3 @@ class FedServerBase:
     @abstractmethod
     def train_one_round(self, round: int):
         pass
-        
-

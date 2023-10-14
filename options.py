@@ -33,7 +33,13 @@ def parse_args() -> argparse.Namespace:
                         help='The parameter for the dirichlet distribution for data partitioning')
     parser.add_argument('--alpha', type=float, default=0.8,
                         help='Hyper-parameter to avoid concentration')
-    parser.add_argument('--noniid_percent', type=int, default=80,
+    parser.add_argument('--noniid_percent', type=int, default=0.8,
                         help='Default set to 0.8 Set to 0.0 for IID.')
+    parser.add_argument('--model_het', action='store_true', default=False,
+                        help='Use heterogeneous model')
+    parser.add_argument('--model_het_percent', default=0.2,
+                        help='Heterogeneous model percent')
+    parser.add_argument('--prob', action='store_true', default=False,
+                        help='Use probabilistic model')
     args = parser.parse_args()
     return args
