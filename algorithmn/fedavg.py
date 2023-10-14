@@ -60,7 +60,8 @@ class FedAvgServer(FedServerBase):
             loss_dict[f'client_{idx}'] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(local_weights, agg_weights, self.client_aggregatable_weights)
+        global_weight = aggregate_weights(
+            local_weights, agg_weights, self.client_aggregatable_weights)
         # update global model
         self.global_model.load_state_dict(global_weight)
 

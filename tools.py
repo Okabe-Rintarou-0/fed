@@ -119,6 +119,14 @@ def weight_flatten(model: Dict[str, Any]):
     params = torch.cat(params)
     return params
 
+def weight_flatten_fc(model: Dict[str, Any]):
+    params = []
+    for k in model:
+        if 'fc' in k:
+            params.append(model[k].reshape(-1))
+    params = torch.cat(params)
+    return params
+
 
 def cal_cosine_difference_matrix(client_idxs: List[int], initial_global_parameters: Dict[str, Any], weights_map: Dict[int, Dict[str, Any]]):
     num_clients = len(client_idxs)
@@ -128,7 +136,7 @@ def cal_cosine_difference_matrix(client_idxs: List[int], initial_global_paramete
         model_i = weights_map[idx]
         for key in model_i:
             model_i[key] -= initial_global_parameters[key]
-        flatten_weights_map[idx] = weight_flatten(model_i).unsqueeze(0)
+        flatten_weights_map[idx] = weight_flatten_fc(model_i).unsqueeze(0)
 
     for i in range(num_clients):
         idx_i = client_idxs[i]
@@ -138,8 +146,6 @@ def cal_cosine_difference_matrix(client_idxs: List[int], initial_global_paramete
             flatten_weight_j = flatten_weights_map[idx_j]
             diff = - torch.nn.functional.cosine_similarity(
                 flatten_weight_i, flatten_weight_j).unsqueeze(0)
-            if diff < - 0.9:
-                diff = - 1.0
             difference_matrix[i, j] = diff
             difference_matrix[j, i] = diff
     return difference_matrix

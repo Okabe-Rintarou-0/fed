@@ -16,6 +16,7 @@ from tools import aggregate_protos, aggregate_weights, get_protos
 class FedL2RegServer(FedServerBase):
     def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
+        self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f'\n---- FedL2Reg Global Communication Round : {round} ----')
@@ -61,7 +62,8 @@ class FedL2RegServer(FedServerBase):
             loss_dict[f'client_{idx}'] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(local_weights, agg_weights)
+        global_weight = aggregate_weights(
+            local_weights, agg_weights, self.client_aggregatable_weights)
         # update global model
         self.global_model.load_state_dict(global_weight)
         # update global prototype
@@ -112,9 +114,9 @@ class FedL2RegClient(FedClientBase):
             protos = features.clone().detach()
             for i in range(len(labels)):
                 if labels[i].item() in local_protos_list.keys():
-                    local_protos_list[labels[i].item()].append(protos[i,:])
+                    local_protos_list[labels[i].item()].append(protos[i, :])
                 else:
-                    local_protos_list[labels[i].item()] = [protos[i,:]]
+                    local_protos_list[labels[i].item()] = [protos[i, :]]
         local_protos = get_protos(local_protos_list)
         return local_protos
 
@@ -213,5 +215,5 @@ class FedL2RegClient(FedClientBase):
                 f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(
                 f"client_{self.idx}_loss", round_loss, round)
-        
+
         return result

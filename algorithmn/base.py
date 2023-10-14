@@ -52,10 +52,9 @@ class FedClientBase:
     @abstractmethod
     def agg_weight(self) -> torch.tensor:
         data_size = len(self.train_loader.dataset)
-        w = torch.tensor(data_size).to(self.device)
-        return w
+        return float(data_size)
 
-    @staticmethod
+    @abstractmethod
     def update_global_protos(self, global_protos):
         self.global_protos = global_protos
 
