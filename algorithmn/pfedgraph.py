@@ -63,6 +63,10 @@ class PFedGraphServer(FedServerBase):
             acc2_dict[f'client_{idx}'] = local_acc2
             loss_dict[f'client_{idx}'] = local_loss
 
+        sum_agg_weights = sum(agg_weights)
+        for i in range(num_clients):
+            agg_weights[i] /= sum_agg_weights
+
         self.adjacency_matrix = update_adjacency_matrix(
             self.adjacency_matrix,
             idx_clients,

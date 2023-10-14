@@ -154,7 +154,7 @@ def optimize_adjacency_matrix(adjacency_matrix: torch.tensor, client_idxs: List[
     h = np.zeros(n)
     A = np.ones((1, n))
     b = np.ones(1)
-    for i in range(difference_matrix.shape[0]):
+    for i in range(n):
         model_difference_vector = difference_matrix[i]
         d = model_difference_vector.numpy()
         q = d - 2 * alpha * p
