@@ -273,14 +273,18 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
 def get_model(args: Namespace) -> nn.Module:
     dataset = args.dataset
     device = args.device
+    num_classes = args.num_classes
+    model_het = args.model_het
+    prob = args.prob
     if dataset in ['cifar', 'cifar10', 'cinic', 'cinic_sep']:
-        global_model = CifarCNN(num_classes=args.num_classes).to(device)
+        global_model = CifarCNN(
+            num_classes=num_classes, probabilistic=prob, model_het=model_het).to(device)
         args.lr = 0.02
     elif dataset == 'fmnist':
         global_model = CNN_FMNIST().to(device)
     elif dataset == 'emnist':
         args.num_classes = 62
-        global_model = CNN_FMNIST(num_classes=args.num_classes).to(device)
+        global_model = CNN_FMNIST(num_classes=num_classes).to(device)
     else:
         raise NotImplementedError()
     return global_model
@@ -289,9 +293,12 @@ def get_model(args: Namespace) -> nn.Module:
 def get_heterogeneous_model(args: Namespace) -> nn.Module:
     dataset = args.dataset
     device = args.device
+    num_classes = args.num_classes
+    model_het = args.model_het
+    prob = args.prob
     if dataset in ['cifar', 'cifar10', 'cinic', 'cinic_sep']:
         heterogeneous_model = CifarResnet(
-            num_classes=args.num_classes).to(device)
+            num_classes=num_classes, probabilistic=prob, model_het=model_het).to(device)
         args.lr = 0.02
     else:
         raise NotImplementedError()
