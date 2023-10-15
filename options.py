@@ -43,5 +43,9 @@ def parse_args() -> argparse.Namespace:
                         help='Use probabilistic model')
     parser.add_argument('--l2r_coeff', type=float, default=1e-2)
     parser.add_argument('--cmi_coeff', type=float, default=5e-4)
+    parser.add_argument('--m1', type=int, default=3,
+                        help='Number of GMM components')
+    parser.add_argument('--z_dim', type=int, default=128,
+                        help='Dimension of z')
     args = parser.parse_args()
     return args

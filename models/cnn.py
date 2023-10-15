@@ -7,7 +7,7 @@ from models.base import FedModel
 
 
 class CifarCNN(FedModel):
-    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, model_het=False):
+    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, model_het=False, z_dim=128):
         super(CifarCNN, self).__init__()
         self.probabilistic = probabilistic
         self.num_samples = num_samples
@@ -18,9 +18,9 @@ class CifarCNN(FedModel):
         self.conv2 = nn.Conv2d(16, 32, 5, padding=1)
         self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
 
-        out_dim = 256 if probabilistic else 128
+        out_dim = z_dim * 2 if probabilistic else z_dim
         self.fc1 = nn.Linear(64 * 3 * 3, out_dim)
-        self.fc2 = nn.Linear(128, num_classes, bias=True)
+        self.fc2 = nn.Linear(z_dim, num_classes, bias=True)
         self.base_weight_keys = [
             'conv1.weight', 'conv1.bias',
             'conv2.weight', 'conv2.bias',

@@ -96,6 +96,7 @@ class FedL2RegClient(FedClientBase):
     def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
         self.w_local_keys = self.local_model.classifier_weight_keys
+        self.mse_loss = nn.MSELoss()
 
     def update_local_model(self, global_weight):
         local_weight = self.local_model.state_dict()
@@ -108,7 +109,7 @@ class FedL2RegClient(FedClientBase):
     def get_local_protos(self):
         model = self.local_model
         local_protos_list = {}
-        for inputs, labels in self.train_data:
+        for inputs, labels in self.train_loader:
             inputs, labels = inputs.to(self.device), labels.to(self.device)
             features, _ = model(inputs)
             protos = features.clone().detach()
@@ -145,7 +146,8 @@ class FedL2RegClient(FedClientBase):
                                     momentum=0.5, weight_decay=0.0005)
         for _ in range(epoch_classifier):
             # local training for 1 epoch
-            data_loader = iter(self.train_data)
+            iter_loss = []
+            data_loader = iter(self.train_loader)
             iter_num = len(data_loader)
             for _ in range(iter_num):
                 images, labels = next(data_loader)
@@ -157,10 +159,7 @@ class FedL2RegClient(FedClientBase):
                 loss.backward()
                 optimizer.step()
                 iter_loss.append(loss.item())
-            round_loss.append(sum(iter_loss)/len(iter_loss))
-            iter_loss = []
-
-        acc1, _ = self.local_test(self.test_data)
+            round_losses.append(sum(iter_loss)/len(iter_loss))
 
         for name, param in model.named_parameters():
             if name in self.w_local_keys:
@@ -172,7 +171,7 @@ class FedL2RegClient(FedClientBase):
 
         local_epoch += epoch_classifier
         for _ in range(local_epoch):
-            data_loader = iter(self.train_data)
+            data_loader = iter(self.train_loader)
             iter_num = len(data_loader)
             for _ in range(iter_num):
                 images, labels = next(data_loader)
@@ -182,7 +181,6 @@ class FedL2RegClient(FedClientBase):
                 loss0 = self.criterion(output, labels)
                 loss1 = 0
                 if round > 0:
-                    loss1 = 0
                     protos_new = protos.clone().detach()
                     for i in range(len(labels)):
                         yi = labels[i].item()
@@ -195,7 +193,7 @@ class FedL2RegClient(FedClientBase):
                 loss.backward()
                 optimizer.step()
                 iter_loss.append(loss.item())
-            round_loss.append(sum(iter_loss)/len(iter_loss))
+            round_losses.append(sum(iter_loss)/len(iter_loss))
             iter_loss = []
 
         acc2 = self.local_test()

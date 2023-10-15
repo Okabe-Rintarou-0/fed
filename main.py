@@ -93,7 +93,7 @@ if __name__ == '__main__':
         print('heterogeneous clients:', heterogeneous_clients)
 
     training_data = {
-        'heterogeneous clients': heterogeneous_clients
+        'heterogeneous_clients': heterogeneous_clients
     }
     with open(training_data_json, 'w') as f:
         f.write(json.dumps(training_data))
@@ -140,4 +140,4 @@ if __name__ == '__main__':
             for idx in range(args.num_clients):
                 weights_path = os.path.join(weights_dir, f'client_{idx}.pth')
                 local_client: FedClientBase = local_clients[idx]
-                torch.save(local_client.local_model.state_dict())
+                torch.save(local_client.local_model.state_dict(), weights_path)

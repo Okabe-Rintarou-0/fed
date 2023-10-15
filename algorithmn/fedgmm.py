@@ -13,7 +13,7 @@ from models.base import FedModel
 from tools import aggregate_weights
 
 
-class FedAvgServer(FedServerBase):
+class FedGMMServer(FedServerBase):
     def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
@@ -91,9 +91,68 @@ class FedAvgServer(FedServerBase):
         return result
 
 
-class FedAvgClient(FedClientBase):
+class FedGMMClient(FedClientBase):
     def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
+        self.M1 = args.m1
+        z_dim = args.z_dim
+        self.mu = np.zeros((self.M1, z_dim))
+        self.sigma = np.zeros((self.M1, z_dim))
+        self.pi = np.zeros((self.M1, z_dim))
+
+    def get_kmeans_mu(self, x, n_centers, init_times=50, min_delta=1e-3):
+        """
+        Find an initial value for the mean. Requires a threshold min_delta for the k-means algorithm to stop iterating.
+        The algorithm is repeated init_times often, after which the best centerpoint is returned.
+        args:
+            x:            torch.FloatTensor (n, d) or (n, 1, d)
+            init_times:   init
+            min_delta:    int
+        """
+        if len(x.size()) == 3:
+            x = x.squeeze(1)
+        x_min, x_max = x.min(), x.max()
+        x = (x - x_min) / (x_max - x_min)
+
+        min_cost = np.inf
+
+        for i in range(init_times):
+            tmp_center = x[np.random.choice(
+                np.arange(x.shape[0]), size=n_centers, replace=True), ...]
+            l2_dis = torch.norm((x.unsqueeze(1).repeat(
+                1, n_centers, 1) - tmp_center), p=2, dim=2)
+            l2_cls = torch.argmin(l2_dis, dim=1)
+
+            cost = 0
+            for c in range(n_centers):
+                if not (l2_cls == c).any():
+                    continue
+                cost += torch.norm(x[l2_cls == c] -
+                                   tmp_center[c], p=2, dim=1).mean()
+
+                assert not torch.isnan(cost)
+
+            if cost < min_cost:
+                min_cost = cost
+                center = tmp_center
+
+        delta = np.inf
+
+        while delta > min_delta:
+            l2_dis = torch.norm((x.unsqueeze(1).repeat(
+                1, n_centers, 1) - center), p=2, dim=2)
+            l2_cls = torch.argmin(l2_dis, dim=1)
+            center_old = center.clone()
+
+            for c in range(n_centers):
+                if not (l2_cls == c).any():
+                    center[c] = center_old[c]
+                    continue
+                center[c] = x[l2_cls == c].mean(dim=0)
+
+            delta = torch.norm((center_old - center), dim=1).max()
+
+        return (center.unsqueeze(0) * (x_max - x_min) + x_min)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')
@@ -114,6 +173,11 @@ class FedAvgClient(FedClientBase):
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 _, output = model(images)
+
+                # ---------------- Client E-stage ----------------- #
+                for m1 in range(self.M1):
+                    pass
+
                 loss = self.criterion(output, labels)
                 loss.backward()
                 optimizer.step()

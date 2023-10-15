@@ -89,10 +89,6 @@ class FedSRServer(FedServerBase):
             self.writer.add_scalars('clients_loss', loss_dict, round)
             self.writer.add_scalars('server_acc_avg', result.acc_map, round)
             self.writer.add_scalar('server_loss_avg', loss_avg, round)
-
-            if self.args.model_het:
-                self.writer.add_scalar(
-                    'server_non_het_model_acc2_avg', non_het_model_acc2_avg, round)
         return result
 
 
