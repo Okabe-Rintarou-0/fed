@@ -8,6 +8,7 @@ from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
 from algorithmn.fedper import FedPerClient, FedPerServer
+from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
@@ -23,7 +24,8 @@ FL_CLIENT = {
     'Lg_FedAvg': LgFedAvgClient,
     'FedPer': FedPerClient,
     'FedL2Reg': FedL2RegClient,
-    'pFedGraph': PFedGraphClient
+    'pFedGraph': PFedGraphClient,
+    'FedSR': FedSRClient,
 }
 
 FL_SERVER = {
@@ -32,7 +34,8 @@ FL_SERVER = {
     'Lg_FedAvg': LgFedAvgServer,
     'FedPer': FedPerServer,
     'FedL2Reg': FedL2RegServer,
-    'pFedGraph': PFedGraphServer
+    'pFedGraph': PFedGraphServer,
+    'FedSR': FedSRServer,
 }
 
 if __name__ == '__main__':
@@ -65,8 +68,10 @@ if __name__ == '__main__':
 
     # setup training data dir
     training_data_dir = os.path.join('./training_data', sub_dir_name)
-    weights_dir = os.path.join(tensorboard_path, 'weights')
+    weights_dir = os.path.join(training_data_dir, 'weights')
     training_data_json = os.path.join(training_data_dir, 'data.json')
+    if not os.path.exists(weights_dir):
+        os.makedirs(weights_dir)
 
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
@@ -94,8 +99,11 @@ if __name__ == '__main__':
         f.write(json.dumps(training_data))
 
     for idx in client_idxs:
-        local_model = deepcopy(global_model) if idx not in heterogeneous_clients \
-            else deepcopy(heterogeneous_model)
+        is_heterogeneous_client = idx in heterogeneous_clients
+        if is_heterogeneous_client:
+            local_model = deepcopy(heterogeneous_model)
+        else:
+            local_model = deepcopy(global_model)
 
         train_loader = train_loaders[idx]
         test_loader = test_loaders[idx]
@@ -103,7 +111,9 @@ if __name__ == '__main__':
                         train_loader=train_loader,
                         test_loader=test_loader,
                         local_model=local_model,
-                        writer=writer)
+                        writer=writer,
+                        het_model=is_heterogeneous_client
+                        )
         write_client_datasets(idx, writer, train_loader, True)
         write_client_datasets(idx, writer, test_loader, False)
         write_client_label_distribution(

@@ -278,16 +278,16 @@ def get_model(args: Namespace) -> nn.Module:
     prob = args.prob
     if dataset in ['cifar', 'cifar10', 'cinic', 'cinic_sep']:
         global_model = CifarCNN(
-            num_classes=num_classes, probabilistic=prob, model_het=model_het).to(device)
+            num_classes=num_classes, probabilistic=prob, model_het=model_het)
         args.lr = 0.02
     elif dataset == 'fmnist':
-        global_model = CNN_FMNIST().to(device)
+        global_model = CNN_FMNIST()
     elif dataset == 'emnist':
         args.num_classes = 62
-        global_model = CNN_FMNIST(num_classes=num_classes).to(device)
+        global_model = CNN_FMNIST(num_classes=num_classes)
     else:
         raise NotImplementedError()
-    return global_model
+    return global_model.to(device)
 
 
 def get_heterogeneous_model(args: Namespace) -> nn.Module:

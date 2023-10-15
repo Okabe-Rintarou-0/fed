@@ -41,5 +41,7 @@ def parse_args() -> argparse.Namespace:
                         help='Heterogeneous model percent')
     parser.add_argument('--prob', action='store_true', default=False,
                         help='Use probabilistic model')
+    parser.add_argument('--l2r_coeff', type=float, default=1e-2)
+    parser.add_argument('--cmi_coeff', type=float, default=5e-4)
     args = parser.parse_args()
     return args

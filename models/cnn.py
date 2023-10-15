@@ -1,4 +1,5 @@
 from typing import List
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as distributions
@@ -50,6 +51,8 @@ class CifarCNN(FedModel):
 
         # --------- Classifier --------- #
         y = self.fc2(z)
+        if self.probabilistic:
+            return z, y, (z_mu, z_sigma)
         return z, y
 
     def get_aggregatable_weights(self) -> List[str]:

@@ -44,7 +44,10 @@ class FedClientBase:
         with torch.no_grad():
             for inputs, labels in self.test_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                _, outputs = model(inputs)
+                if self.args.prob:
+                    _, outputs, _ = model(inputs)
+                else:
+                    _, outputs = model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
                 correct += (predicted == labels).sum().item()
         acc = 100.0*correct/total
