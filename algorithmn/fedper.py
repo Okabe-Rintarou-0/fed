@@ -83,8 +83,8 @@ class FedPerServer(FedServerBase):
 
 
 class FedPerClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
-        super().__init__(idx, args, train_loader, test_loader, local_model, writer)
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
+        super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
         self.w_local_keys = self.local_model.classifier_weight_keys
 
     def update_local_model(self, global_weight):

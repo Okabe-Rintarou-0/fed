@@ -28,6 +28,7 @@ class FedAvgServer(FedServerBase):
         idx_clients = sorted(idx_clients)
 
         global_weight = self.global_model.state_dict()
+        non_het_model_acc2s = []
         agg_weights = []
         local_weights = []
         local_losses = []
@@ -55,6 +56,9 @@ class FedAvgServer(FedServerBase):
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
 
+            if not local_client.het_model:
+                non_het_model_acc2s.append(local_acc2)
+
             acc1_dict[f'client_{idx}'] = local_acc1
             acc2_dict[f'client_{idx}'] = local_acc2
             loss_dict[f'client_{idx}'] = local_loss
@@ -66,12 +70,15 @@ class FedAvgServer(FedServerBase):
         self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
+        non_het_model_acc2_avg = sum(
+            non_het_model_acc2s) / len(non_het_model_acc2s)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
         acc_avg2 = sum(local_acc2s) / len(local_acc2s)
 
         result = GlobalTrainResult(loss_map={
-            'loss_avg': loss_avg
+            'loss_avg': loss_avg,
         }, acc_map={
+            'non_het_model_acc2_avg': non_het_model_acc2_avg,
             'acc_avg1': acc_avg1,
             'acc_avg2': acc_avg2
         })
@@ -81,12 +88,16 @@ class FedAvgServer(FedServerBase):
             self.writer.add_scalars('clients_loss', loss_dict, round)
             self.writer.add_scalars('server_acc_avg', result.acc_map, round)
             self.writer.add_scalar('server_loss_avg', loss_avg, round)
+
+            if self.args.model_het:
+                self.writer.add_scalar(
+                    'server_non_het_model_acc2_avg', non_het_model_acc2_avg, round)
         return result
 
 
 class FedAvgClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
-        super().__init__(idx, args, train_loader, test_loader, local_model, writer)
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
+        super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')

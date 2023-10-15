@@ -83,8 +83,8 @@ class LgFedAvgServer(FedServerBase):
 
 
 class LgFedAvgClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None):
-        super().__init__(idx, args, train_loader, test_loader, local_model, writer)
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
+        super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
         # the local_weights in LG_FedAvg are representation layers
         self.w_local_keys = self.local_model.base_weight_keys
 

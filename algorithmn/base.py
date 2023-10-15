@@ -14,7 +14,7 @@ from tools import calc_label_distribution
 
 class FedClientBase:
     @abstractmethod
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None):
+    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None, het_model: bool):
         self.idx = idx
         self.args = args
         self.train_loader = train_loader
@@ -24,6 +24,7 @@ class FedClientBase:
         self.device = args.device
         self.criterion = nn.CrossEntropyLoss()
         self.global_protos = None
+        self.het_model = het_model
 
     @abstractmethod
     def label_distribution(self):
