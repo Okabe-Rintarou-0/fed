@@ -132,11 +132,13 @@ def cal_cosine_difference_matrix(client_idxs: List[int], initial_global_paramete
     num_clients = len(client_idxs)
     difference_matrix = torch.zeros((num_clients, num_clients))
     flatten_weights_map = {}
+    dw = {}
     for idx in client_idxs:
+        dw[idx] = {}
         model_i = weights_map[idx]
         for key in model_i:
-            model_i[key] -= initial_global_parameters[key]
-        flatten_weights_map[idx] = weight_flatten_fc(model_i).unsqueeze(0)
+            dw[idx][key] = model_i[key] - initial_global_parameters[key]
+        flatten_weights_map[idx] = weight_flatten_fc(dw[idx]).unsqueeze(0)
 
     for i in range(num_clients):
         idx_i = client_idxs[i]
