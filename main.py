@@ -7,6 +7,7 @@ import torch
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
+from algorithmn.fedpac import FedPACClient, FedPACServer
 from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
@@ -26,6 +27,7 @@ FL_CLIENT = {
     'FedL2Reg': FedL2RegClient,
     'pFedGraph': PFedGraphClient,
     'FedSR': FedSRClient,
+    'FedPAC': FedPACClient
 }
 
 FL_SERVER = {
@@ -36,6 +38,7 @@ FL_SERVER = {
     'FedL2Reg': FedL2RegServer,
     'pFedGraph': PFedGraphServer,
     'FedSR': FedSRServer,
+    'FedPAC': FedPACServer
 }
 
 if __name__ == '__main__':

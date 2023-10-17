@@ -11,6 +11,19 @@ import cvxpy as cp
 from models import CifarCNN
 
 
+def pairwise(data):
+    """ Simple generator of the pairs (x, y) in a tuple such that index x < index y.
+    Args:
+    data Indexable (including ability to query length) containing the elements
+    Returns:
+    Generator over the pairs of the elements of 'data'
+    """
+    n = len(data)
+    for i in range(n):
+        for j in range(i, n):
+            yield (data[i], data[j])
+
+
 def aggregate_weights(w: List[Dict[str, Any]], agg_weight: List[float], aggregatable_weights: List[str] | None = None) -> Dict[str, Any]:
     """
     Returns the average of the weights.
@@ -28,7 +41,7 @@ def aggregate_weights(w: List[Dict[str, Any]], agg_weight: List[float], aggregat
     return w_avg
 
 
-def aggregate_personalized_model(client_idxs: List[int], weights_map: Dict[int, Dict[str, Any]], adjacency_matrix: torch.tensor) -> Dict[int, Dict[str, Any]]:
+def aggregate_personalized_model(client_idxs: List[int], weights_map: Dict[int, Dict[str, Any]], adjacency_matrix: torch.Tensor) -> Dict[int, Dict[str, Any]]:
     tmp_client_weights_map = {}
     for client_idx in client_idxs:
         model_i = weights_map[client_idx]
@@ -81,6 +94,88 @@ def calc_label_distribution(dataloader: DataLoader, num_classes: int):
         for label in labels:
             distribution[label] += 1
     return distribution
+
+
+def agg_classifier_weighted_p(w, avg_weight, keys, idx):
+    """
+    Returns the average of the weights.
+    """
+    w_0 = copy.deepcopy(w[idx])
+    for key in keys:
+        w_0[key] = torch.zeros_like(w_0[key])
+    wc = 0
+    for i in range(len(w)):
+        wi = avg_weight[i]
+        wc += wi
+        for key in keys:
+            w_0[key] += wi*w[i][key]
+    for key in keys:
+        w_0[key] = torch.div(w_0[key], wc)
+    return w_0
+
+
+def get_head_agg_weight(num_users, Vars, Hs):
+    device = Hs[0][0].device
+    num_cls = Hs[0].shape[0]  # number of classes
+    d = Hs[0].shape[1]  # dimension of feature representation
+    avg_weight = []
+    for i in range(num_users):
+        # ---------------------------------------------------------------------------
+        # variance ter
+        v = torch.tensor(Vars, device=device)
+        # ---------------------------------------------------------------------------
+        # bias term
+        h_ref = Hs[i]
+        dist = torch.zeros((num_users, num_users), device=device)
+        for j1, j2 in pairwise(tuple(range(num_users))):
+            h_j1 = Hs[j1]
+            h_j2 = Hs[j2]
+            h = torch.zeros((d, d), device=device)
+            for k in range(num_cls):
+                h += torch.mm((h_ref[k]-h_j1[k]).reshape(d, 1),
+                              (h_ref[k]-h_j2[k]).reshape(1, d))
+            dj12 = torch.trace(h)
+            dist[j1][j2] = dj12
+            dist[j2][j1] = dj12
+
+        # QP solver
+        p_matrix = torch.diag(v) + dist
+        p_matrix = p_matrix.cpu().numpy()  # coefficient for QP problem
+        evals, evecs = torch.linalg.eig(torch.tensor(p_matrix))
+        evals = evals.float()
+        evecs = evecs.float()
+
+        # for numerical stablity
+        p_matrix_new = 0
+        p_matrix_new = 0
+        for ii in range(num_users):
+            if evals[ii] >= 0.01:
+                p_matrix_new += evals[ii]*torch.mm(evecs[:, ii].reshape(
+                    num_users, 1), evecs[:, ii].reshape(1, num_users))
+        p_matrix = p_matrix_new.numpy() if not np.all(
+            np.linalg.eigvals(p_matrix) >= 0.0) else p_matrix
+
+        # solve QP
+        alpha = 0
+        eps = 1e-3
+        if np.all(np.linalg.eigvals(p_matrix) >= 0):
+            alphav = cp.Variable(num_users)
+            obj = cp.Minimize(cp.quad_form(alphav, p_matrix))
+            prob = cp.Problem(obj, [cp.sum(alphav) == 1.0, alphav >= 0])
+            prob.solve()
+            alpha = alphav.value
+            alpha = [(i)*(i > eps)
+                     for i in alpha]  # zero-out small weights (<eps)
+            if i == 0:
+                print('({}) Agg Weights of Classifier Head'.format(i+1))
+                print(alpha, '\n')
+
+        else:
+            alpha = None  # if no solution for the optimization problem, use local classifier only
+
+        avg_weight.append(alpha)
+
+    return avg_weight
 
 
 def write_client_label_distribution(idx: int, writer: SummaryWriter, train_loader: DataLoader, num_classes: int):
@@ -154,7 +249,7 @@ def cal_cosine_difference_matrix(client_idxs: List[int], initial_global_paramete
     return difference_matrix
 
 
-def optimize_adjacency_matrix(adjacency_matrix: torch.tensor, client_idxs: List[int], difference_matrix: torch.tensor, alpha: float, agg_weights: List[float]):
+def optimize_adjacency_matrix(adjacency_matrix: torch.Tensor, client_idxs: List[int], difference_matrix: torch.Tensor, alpha: float, agg_weights: List[float]):
     n = difference_matrix.shape[0]
     p = np.array(agg_weights)
     P = alpha * np.identity(n)
@@ -177,7 +272,7 @@ def optimize_adjacency_matrix(adjacency_matrix: torch.tensor, client_idxs: List[
     return adjacency_matrix
 
 
-def update_adjacency_matrix(adjacency_matrix: torch.tensor, client_idxs: List[int], initial_global_parameters: Dict[str, Any], weights_map: Dict[int, Dict[str, Any]], agg_weights: List[float], alpha: float):
+def update_adjacency_matrix(adjacency_matrix: torch.Tensor, client_idxs: List[int], initial_global_parameters: Dict[str, Any], weights_map: Dict[int, Dict[str, Any]], agg_weights: List[float], alpha: float):
     difference_matrix = cal_cosine_difference_matrix(
         client_idxs, initial_global_parameters, weights_map)
     adjacency_matrix = optimize_adjacency_matrix(

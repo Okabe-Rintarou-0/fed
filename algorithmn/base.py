@@ -51,7 +51,7 @@ class FedClientBase:
         return acc
 
     @abstractmethod
-    def agg_weight(self) -> torch.tensor:
+    def agg_weight(self) -> float:
         data_size = len(self.train_loader.dataset)
         return float(data_size)
 
