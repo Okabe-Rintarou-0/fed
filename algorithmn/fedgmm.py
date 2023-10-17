@@ -118,10 +118,7 @@ class FedGMMClient(FedClientBase):
         with torch.no_grad():
             for x, _ in self.train_loader:
                 x = x.to(self.device)
-                if self.args.prob:
-                    z, _, _ = self.local_model(x)
-                else:
-                    z, _ = self.local_model(x)
+                z, _ = self.local_model(x)
                 zs.append(z)
         zs = torch.cat(zs)
         return zs

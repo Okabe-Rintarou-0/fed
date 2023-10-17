@@ -130,7 +130,7 @@ class FedSRClient(FedClientBase):
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 
-                z, logits, (z_mu, z_sigma) = model(images)
+                z, logits, (z_mu, z_sigma) = model(images, return_dist=True)
                 y = labels
                 loss = self.criterion(logits, labels)
 

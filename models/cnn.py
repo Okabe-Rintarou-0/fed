@@ -32,7 +32,7 @@ class CifarCNN(FedModel):
             'fc2.weight', 'fc2.bias',
         ]
 
-    def forward(self, x):
+    def forward(self, x, return_dist=False):
         # --------- Extract Features --------- #
         x = self.pool(F.leaky_relu(self.conv1(x)))
         x = self.pool(F.leaky_relu(self.conv2(x)))
@@ -52,7 +52,7 @@ class CifarCNN(FedModel):
 
         # --------- Classifier --------- #
         y = self.fc2(z)
-        if self.probabilistic:
+        if self.probabilistic and return_dist:
             return z, y, (z_mu, z_sigma)
         return z, y
 
