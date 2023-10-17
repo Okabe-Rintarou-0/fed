@@ -12,6 +12,7 @@ class CifarResnet(FedModel):
         self.probabilistic = probabilistic
         self.num_samples = num_samples
         self.model_het = model_het
+        self.z_dim = z_dim
 
         if backbone == 'resnet18':
             self.backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
@@ -35,11 +36,11 @@ class CifarResnet(FedModel):
             z = x
         else:
             z_params = x
-            z_mu = z_params[:, :128]
-            z_sigma = F.softplus(z_params[:, 128:])
+            z_mu = z_params[:, :self.z_dim]
+            z_sigma = F.softplus(z_params[:, self.z_dim:])
             z_dist = distributions.Independent(
                 distributions.normal.Normal(z_mu, z_sigma), 1)
-            z = z_dist.rsample([self.num_samples]).view([-1, 128])
+            z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #
         y = self.fc2(z)

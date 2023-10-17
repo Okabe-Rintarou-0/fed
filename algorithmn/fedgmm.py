@@ -1,5 +1,6 @@
 from argparse import Namespace
 import copy
+import math
 from typing import List
 from tensorboardX import SummaryWriter
 import torch
@@ -10,7 +11,9 @@ import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from tools import aggregate_weights
+from tools import aggregate_weights, calculate_matmul, calculate_matmul_n_times
+
+# Reference: https://github.com/zshuai8/FedGMM_ICML2023
 
 
 class FedGMMServer(FedServerBase):
@@ -96,11 +99,137 @@ class FedGMMClient(FedClientBase):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
         self.M1 = args.m1
         z_dim = args.z_dim
-        self.mu = np.zeros((self.M1, z_dim))
-        self.sigma = np.zeros((self.M1, z_dim))
-        self.pi = np.zeros((self.M1, z_dim))
+        self.z_dim = z_dim
+        device = args.device
+        self.mu = torch.randn(1, self.M1, z_dim).to(device)
+        self.eps = 1.e-1
+        self.var = torch.eye(z_dim).reshape(
+            1, 1, z_dim, z_dim).repeat(1, self.M1, 1, 1).to(device)
+        self.pi = torch.Tensor(1, self.M1, 1).fill_(1. / self.M1).to(device)
 
-    def get_kmeans_mu(self, x, n_centers, init_times=50, min_delta=1e-3):
+        self.mu.requires_grad = self.var.requires_grad = self.pi.requires_grad = False
+
+        self.params_fitted = False
+
+        self.init_gmm()
+
+    def _get_x_present(self) -> torch.tensor:
+        zs = []
+        with torch.no_grad():
+            for x, _ in self.train_loader:
+                x = x.to(self.device)
+                if self.args.prob:
+                    z, _, _ = self.local_model(x)
+                else:
+                    z, _ = self.local_model(x)
+                zs.append(z)
+        zs = torch.cat(zs)
+        return zs
+
+    def init_gmm(self):
+        z = self._get_x_present()
+        self.mu = self._get_kmeans_mu(z, n_centers=self.M1)
+
+        # compute log(q_s) in E step, in log space, to prevent overflow errors.
+        _, log_resp = self._e_step(z)
+        _, mu, var = self._m_step(z, log_resp)
+        self.__update_mu(mu)
+        self.__update_var(var)
+
+    def __em(self, x):
+        """
+        Performs one iteration of the expectation-maximization algorithm by calling the respective subroutines.
+        args:
+            x:          torch.Tensor (n, 1, d)
+        """
+        _, log_resp = self._e_step(x)
+        pi, mu, var = self._m_step(x, log_resp)
+
+        self.__update_pi(pi)
+        self.__update_mu(mu)
+        self.__update_var(var)
+
+    def __update_pi(self, pi):
+        """
+        Updates pi to the provided value.
+        args:
+            pi:         torch.FloatTensor
+        """
+        assert pi.size() in [
+            (1, self.M1, 1)], "Input pi does not have required tensor dimensions (%i, %i, %i)" % (
+            1, self.M1, 1)
+
+        self.pi.data = pi
+
+        self.pi = self.pi.to(self.device)
+
+    def __update_mu(self, mu):
+        """
+        Updates mean to the provided value.
+        args:
+            mu:         torch.FloatTensor
+        """
+        assert mu.size() in [(self.M1, self.z_dim), (1, self.M1, self.z_dim)], "Input mu does not have required tensor dimensions (%i, %i) or (1, %i, %i)" % (
+            self.M1, self.z_dim, self.M1, self.z_dim)
+
+        if mu.size() == (self.M1, self.z_dim):
+            self.mu = mu.unsqueeze(0)
+        elif mu.size() == (1, self.M1, self.z_dim):
+            self.mu = mu
+
+        self.mu = self.mu.to(self.device)
+
+    def __update_var(self, var):
+        """
+        Updates variance to the provided value.
+        args:
+            var:        torch.FloatTensor
+        """
+        assert var.size() in [(self.M1, self.z_dim, self.z_dim), (1, self.M1, self.z_dim, self.z_dim)], "Input var does not have required tensor dimensions (%i, %i, %i) or (1, %i, %i, %i), but instead {}".format(
+            self.M1, self.z_dim, self.z_dim, self.M1, self.z_dim, self.z_dim, var.size())
+
+        if var.size() == (self.M1, self.z_dim, self.z_dim):
+            self.var = var.unsqueeze(0)
+        elif var.size() == (1, self.M1, self.z_dim, self.z_dim):
+            self.var = var
+
+        assert not torch.isnan(self.var).any()
+
+    def _m_step(self, x, log_resp):
+        """
+        From the log-probabilities, computes new parameters pi, mu, var (that maximize the log-likelihood). This is the maximization step of the EM-algorithm.
+        args:
+            x:          torch.Tensor (n, d) or (n, 1, d)
+            log_resp:   torch.Tensor (n, k, 1)
+        returns:
+            pi:         torch.Tensor (1, k, 1)
+            mu:         torch.Tensor (1, k, d)
+            var:        torch.Tensor (1, k, d)
+        """
+        x = self.check_size(x)
+
+        # resp -> q_s
+        resp = torch.exp(log_resp)
+
+        pi = torch.sum(resp, dim=0, keepdim=True) + self.eps
+        mu = torch.sum(resp * x, dim=0, keepdim=True) / pi
+
+        eps = (torch.eye(self.z_dim) * self.eps).to(x.device)
+        var = torch.sum((x - mu).unsqueeze(-1).matmul((x - mu).unsqueeze(-2)) * resp.unsqueeze(-1), dim=0,
+                        keepdim=True) / pi.unsqueeze(3) + eps
+
+        pi = pi / x.shape[0]
+
+        return pi, mu, var
+
+    def check_size(self, x):
+        if len(x.size()) == 2:
+            # (n, d) --> (n, 1, d)
+            x = x.unsqueeze(1)
+
+        return x
+
+    def _get_kmeans_mu(self, x, n_centers, init_times=50, min_delta=1e-3):
         """
         Find an initial value for the mean. Requires a threshold min_delta for the k-means algorithm to stop iterating.
         The algorithm is repeated init_times often, after which the best centerpoint is returned.
@@ -116,7 +245,7 @@ class FedGMMClient(FedClientBase):
 
         min_cost = np.inf
 
-        for i in range(init_times):
+        for _ in range(init_times):
             tmp_center = x[np.random.choice(
                 np.arange(x.shape[0]), size=n_centers, replace=True), ...]
             l2_dis = torch.norm((x.unsqueeze(1).repeat(
@@ -153,6 +282,75 @@ class FedGMMClient(FedClientBase):
             delta = torch.norm((center_old - center), dim=1).max()
 
         return (center.unsqueeze(0) * (x_max - x_min) + x_min)
+
+    def _calculate_log_det(self, var):
+        """
+        Calculate log determinant in log space, to prevent overflow errors.
+        args:
+            var:            torch.Tensor (1, k, d, d)
+        """
+        log_det = torch.empty(size=(self.M1,)).to(var.device)
+
+        # The determinant value of a diagonal matrix is equal to the sum of the elements on its diagonal.
+        for k in range(self.M1):
+            log_det[k] = 2 * \
+                torch.log(torch.diagonal(
+                    torch.linalg.cholesky(var[0, k]))).sum()
+
+        return log_det.unsqueeze(-1)
+
+    def _estimate_log_prob(self, x):
+        """
+        Returns a tensor with dimensions (n, k, 1), which indicates the log-likelihood that samples belong to the k-th Gaussian.
+        args:
+            x:            torch.Tensor (n, d) or (n, 1, d)
+        returns:
+            log_prob:     torch.Tensor (n, k, 1)
+        """
+        x = self.check_size(x)
+
+        mu = self.mu
+        var = self.var
+
+        precision = torch.inverse(var)
+
+        d = x.shape[-1]
+
+        log_2pi = d * np.log(2. * math.pi)
+
+        log_det = self._calculate_log_det(precision)
+
+        x_mu_T = (x - mu).unsqueeze(-2)
+        x_mu = (x - mu).unsqueeze(-1)
+
+        x_mu_T_precision = calculate_matmul_n_times(self.M1, x_mu_T, precision)
+        x_mu_T_precision_x_mu = calculate_matmul(x_mu_T_precision, x_mu)
+
+        log_prob = -.5 * (log_2pi - log_det + x_mu_T_precision_x_mu)
+
+        assert not torch.isnan(log_prob).any()
+
+        return log_prob
+
+    def _e_step(self, x):
+        """
+        Computes log-responses that indicate the (logarithmic) posterior belief (sometimes called responsibilities) that a data point was generated by one of the k mixture components.
+        Also returns the mean of the mean of the logarithms of the probabilities (as is done in sklearn).
+        This is the so-called expectation step of the EM-algorithm.
+        args:
+            x:              torch.Tensor (n, d) or (n, 1, d)
+        returns:
+            log_prob_norm:  torch.Tensor (1)
+            log_resp:       torch.Tensor (n, k, 1)
+        """
+        x = self.check_size(x)
+
+        # q ~ pi_c * N(x, mu, var) * p(y|x)
+        weighted_log_prob = self._estimate_log_prob(x) + torch.log(self.pi)
+        log_prob_norm = torch.logsumexp(weighted_log_prob, dim=1, keepdim=True)
+        log_resp = weighted_log_prob - log_prob_norm
+
+        return torch.mean(log_prob_norm), log_resp
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')

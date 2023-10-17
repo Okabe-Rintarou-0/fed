@@ -18,9 +18,10 @@ class FedSRServer(FedServerBase):
     def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.global_model.add_module('r', Rzy(args.num_classes, args.z_dim))
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f'\n---- FedAvg Global Communication Round : {round} ----')
+        print(f'\n---- FedSR Global Communication Round : {round} ----')
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if round >= self.args.epochs:
@@ -92,25 +93,26 @@ class FedSRServer(FedServerBase):
         return result
 
 
+class Rzy(nn.Module):
+    def __init__(self, num_classes: int, z_dim: int):
+        super().__init__()
+        self.mu = nn.Parameter(torch.zeros(num_classes, z_dim))
+        self.sigma = nn.Parameter(torch.ones(num_classes, z_dim))
+        self.C = nn.Parameter(torch.ones([]))
+
+
 class FedSRClient(FedClientBase):
     def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
         super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
         assert args.prob, "FedSR only support probabilistic model, please use '--prob' flag to start it."
         self.l2r_coeff = args.l2r_coeff
         self.cmi_coeff = args.cmi_coeff
-        self.r_mu = nn.Parameter(torch.zeros(args.num_classes, 128))
-        self.r_sigma = nn.Parameter(torch.ones(args.num_classes, 128))
-        self.C = nn.Parameter(torch.ones([]))
+        self.r = Rzy(args.num_classes, args.z_dim)
+        self.local_model.add_module('r', self.r)
 
         # Set optimizer for the local updates
         self.optimizer = torch.optim.SGD(
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005)
-        self.optimizer.add_param_group({
-            'params': [self.r_mu, self.r_sigma, self.C],
-            'lr': self.args.lr,
-            'momentum': 0.5,
-            'weight_decay': 0.0005
-        })
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f'[client {self.idx}] local train round {round}:')
@@ -127,6 +129,7 @@ class FedSRClient(FedClientBase):
                 images, labels = next(data_loader)
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
+                
                 z, logits, (z_mu, z_sigma) = model(images)
                 y = labels
                 loss = self.criterion(logits, labels)
@@ -138,14 +141,13 @@ class FedSRClient(FedClientBase):
 
                 if self.cmi_coeff != 0.0:
                     reg_CMI = torch.zeros_like(loss)
-                    r_sigma_softplus = F.softplus(self.r_sigma)
-                    r_mu = self.r_mu[y]
+                    r_sigma_softplus = F.softplus(self.r.sigma)
+                    r_mu = self.r.mu[y]
                     r_sigma = r_sigma_softplus[y]
-                    z_mu_scaled = z_mu*self.C
-                    z_sigma_scaled = z_sigma*self.C
-                    reg_CMI = torch.log(r_sigma) - torch.log(z_sigma_scaled) + \
-                        (z_sigma_scaled**2+(z_mu_scaled-r_mu)**2) / \
-                        (2*r_sigma**2) - 0.5
+                    z_mu_scaled = z_mu*self.r.C
+                    z_sigma_scaled = z_sigma*self.r.C
+                    reg_CMI = torch.log(r_sigma) - torch.log(z_sigma_scaled) + (
+                        z_sigma_scaled**2+(z_mu_scaled-r_mu)**2) / (2*r_sigma**2) - 0.5
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff*reg_CMI
 

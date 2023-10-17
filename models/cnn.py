@@ -12,6 +12,7 @@ class CifarCNN(FedModel):
         self.probabilistic = probabilistic
         self.num_samples = num_samples
         self.model_het = model_het
+        self.z_dim = z_dim
 
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, padding=0)
         self.pool = nn.MaxPool2d(2, 2)
@@ -43,11 +44,11 @@ class CifarCNN(FedModel):
             z = F.leaky_relu(x)
         else:
             z_params = x
-            z_mu = z_params[:, :128]
-            z_sigma = F.softplus(z_params[:, 128:])
+            z_mu = z_params[:, :self.z_dim]
+            z_sigma = F.softplus(z_params[:, self.z_dim:])
             z_dist = distributions.Independent(
                 distributions.normal.Normal(z_mu, z_sigma), 1)
-            z = z_dist.rsample([self.num_samples]).view([-1, 128])
+            z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #
         y = self.fc2(z)
