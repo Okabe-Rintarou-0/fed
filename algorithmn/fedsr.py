@@ -15,13 +15,19 @@ from tools import aggregate_weights
 
 
 class FedSRServer(FedServerBase):
-    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
+    def __init__(
+        self,
+        args: Namespace,
+        global_model: FedModel,
+        clients: List[FedClientBase],
+        writer: SummaryWriter | None = None,
+    ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
-        self.global_model.add_module('r', Rzy(args.num_classes, args.z_dim))
+        self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f'\n---- FedSR Global Communication Round : {round} ----')
+        print(f"\n---- FedSR Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if round >= self.args.epochs:
@@ -46,12 +52,11 @@ class FedSRServer(FedServerBase):
             agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
             local_client.update_local_model(global_weight=global_weight)
-            result = local_client.local_train(
-                local_epoch=local_epoch, round=round)
+            result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = result.weights
-            local_loss = result.loss_map['round_loss']
-            local_acc1 = result.acc_map['acc1']
-            local_acc2 = result.acc_map['acc2']
+            local_loss = result.loss_map["round_loss"]
+            local_acc1 = result.acc_map["acc1"]
+            local_acc2 = result.acc_map["acc2"]
 
             local_weights.append(copy.deepcopy(w))
             local_losses.append(local_loss)
@@ -61,35 +66,38 @@ class FedSRServer(FedServerBase):
             if not local_client.het_model:
                 non_het_model_acc2s.append(local_acc2)
 
-            acc1_dict[f'client_{idx}'] = local_acc1
-            acc2_dict[f'client_{idx}'] = local_acc2
-            loss_dict[f'client_{idx}'] = local_loss
+            acc1_dict[f"client_{idx}"] = local_acc1
+            acc2_dict[f"client_{idx}"] = local_acc2
+            loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
         global_weight = aggregate_weights(
-            local_weights, agg_weights, self.client_aggregatable_weights)
+            local_weights, agg_weights, self.client_aggregatable_weights
+        )
         # update global model
         self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
-        non_het_model_acc2_avg = sum(
-            non_het_model_acc2s) / len(non_het_model_acc2s)
+        non_het_model_acc2_avg = sum(non_het_model_acc2s) / len(non_het_model_acc2s)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
         acc_avg2 = sum(local_acc2s) / len(local_acc2s)
 
-        result = GlobalTrainResult(loss_map={
-            'loss_avg': loss_avg,
-        }, acc_map={
-            'non_het_model_acc2_avg': non_het_model_acc2_avg,
-            'acc_avg1': acc_avg1,
-            'acc_avg2': acc_avg2
-        })
+        result = GlobalTrainResult(
+            loss_map={
+                "loss_avg": loss_avg,
+            },
+            acc_map={
+                "non_het_model_acc2_avg": non_het_model_acc2_avg,
+                "acc_avg1": acc_avg1,
+                "acc_avg2": acc_avg2,
+            },
+        )
         if self.writer is not None:
-            self.writer.add_scalars('clients_acc1', acc1_dict, round)
-            self.writer.add_scalars('clients_acc2', acc2_dict, round)
-            self.writer.add_scalars('clients_loss', loss_dict, round)
-            self.writer.add_scalars('server_acc_avg', result.acc_map, round)
-            self.writer.add_scalar('server_loss_avg', loss_avg, round)
+            self.writer.add_scalars("clients_acc1", acc1_dict, round)
+            self.writer.add_scalars("clients_acc2", acc2_dict, round)
+            self.writer.add_scalars("clients_loss", loss_dict, round)
+            self.writer.add_scalars("server_acc_avg", result.acc_map, round)
+            self.writer.add_scalar("server_loss_avg", loss_avg, round)
         return result
 
 
@@ -102,20 +110,34 @@ class Rzy(nn.Module):
 
 
 class FedSRClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
-        super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
-        assert args.prob, "FedSR only support probabilistic model, please use '--prob' flag to start it."
+    def __init__(
+        self,
+        idx: int,
+        args: Namespace,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        local_model: FedModel,
+        writer: SummaryWriter | None = None,
+        het_model=False,
+    ):
+        super().__init__(
+            idx, args, train_loader, test_loader, local_model, writer, het_model
+        )
+        assert (
+            args.prob
+        ), "FedSR only support probabilistic model, please use '--prob' flag to start it."
         self.l2r_coeff = args.l2r_coeff
         self.cmi_coeff = args.cmi_coeff
         self.r = Rzy(args.num_classes, args.z_dim)
-        self.local_model.add_module('r', self.r)
+        self.local_model.add_module("r", self.r)
 
         # Set optimizer for the local updates
         self.optimizer = torch.optim.SGD(
-            local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005)
+            local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
+        )
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
-        print(f'[client {self.idx}] local train round {round}:')
+        print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model
         model.train()
         model.zero_grad()
@@ -129,7 +151,7 @@ class FedSRClient(FedClientBase):
                 images, labels = next(data_loader)
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
-                
+
                 z, logits, (z_mu, z_sigma) = model(images, return_dist=True)
                 y = labels
                 loss = self.criterion(logits, labels)
@@ -137,19 +159,24 @@ class FedSRClient(FedClientBase):
                 if self.l2r_coeff != 0.0:
                     reg_L2R = torch.zeros_like(loss)
                     reg_L2R = z.norm(dim=1).mean()
-                    loss += self.l2r_coeff*reg_L2R
+                    loss += self.l2r_coeff * reg_L2R
 
                 if self.cmi_coeff != 0.0:
                     reg_CMI = torch.zeros_like(loss)
                     r_sigma_softplus = F.softplus(self.r.sigma)
                     r_mu = self.r.mu[y]
                     r_sigma = r_sigma_softplus[y]
-                    z_mu_scaled = z_mu*self.r.C
-                    z_sigma_scaled = z_sigma*self.r.C
-                    reg_CMI = torch.log(r_sigma) - torch.log(z_sigma_scaled) + (
-                        z_sigma_scaled**2+(z_mu_scaled-r_mu)**2) / (2*r_sigma**2) - 0.5
+                    z_mu_scaled = z_mu * self.r.C
+                    z_sigma_scaled = z_sigma * self.r.C
+                    reg_CMI = (
+                        torch.log(r_sigma)
+                        - torch.log(z_sigma_scaled)
+                        + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
+                        / (2 * r_sigma**2)
+                        - 0.5
+                    )
                     reg_CMI = reg_CMI.sum(1).mean()
-                    loss += self.cmi_coeff*reg_CMI
+                    loss += self.cmi_coeff * reg_CMI
 
                 loss.backward()
                 self.optimizer.step()
@@ -158,17 +185,16 @@ class FedSRClient(FedClientBase):
         acc2 = self.local_test()
 
         result.weights = model.state_dict()
-        result.acc_map['acc1'] = acc1
-        result.acc_map['acc2'] = acc2
+        result.acc_map["acc1"] = acc1
+        result.acc_map["acc2"] = acc2
         round_loss = np.sum(round_losses) / len(round_losses)
-        result.loss_map['round_loss'] = round_loss
+        result.loss_map["round_loss"] = round_loss
         print(
-            f'[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}')
+            f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
+        )
 
         if self.writer is not None:
-            self.writer.add_scalars(
-                f"client_{self.idx}_acc", result.acc_map, round)
-            self.writer.add_scalar(
-                f"client_{self.idx}_loss", round_loss, round)
+            self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
+            self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result

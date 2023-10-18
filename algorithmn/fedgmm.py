@@ -18,15 +18,21 @@ from tools import aggregate_weights, calculate_matmul, calculate_matmul_n_times
 
 
 class FedGMMServer(FedServerBase):
-    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None = None):
+    def __init__(
+        self,
+        args: Namespace,
+        global_model: FedModel,
+        clients: List[FedClientBase],
+        writer: SummaryWriter | None = None,
+    ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f'\n---- FedAvg Global Communication Round : {round} ----')
+        print(f"\n---- FedAvg Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
-        if (round >= self.args.epochs):
+        if round >= self.args.epochs:
             m = num_clients
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
@@ -48,12 +54,11 @@ class FedGMMServer(FedServerBase):
             agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
             local_client.update_local_model(global_weight=global_weight)
-            result = local_client.local_train(
-                local_epoch=local_epoch, round=round)
+            result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = result.weights
-            local_loss = result.loss_map['round_loss']
-            local_acc1 = result.acc_map['acc1']
-            local_acc2 = result.acc_map['acc2']
+            local_loss = result.loss_map["round_loss"]
+            local_acc1 = result.acc_map["acc1"]
+            local_acc2 = result.acc_map["acc2"]
 
             local_weights.append(copy.deepcopy(w))
             local_losses.append(local_loss)
@@ -63,41 +68,55 @@ class FedGMMServer(FedServerBase):
             if not local_client.het_model:
                 non_het_model_acc2s.append(local_acc2)
 
-            acc1_dict[f'client_{idx}'] = local_acc1
-            acc2_dict[f'client_{idx}'] = local_acc2
-            loss_dict[f'client_{idx}'] = local_loss
+            acc1_dict[f"client_{idx}"] = local_acc1
+            acc2_dict[f"client_{idx}"] = local_acc2
+            loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
         global_weight = aggregate_weights(
-            local_weights, agg_weights, self.client_aggregatable_weights)
+            local_weights, agg_weights, self.client_aggregatable_weights
+        )
         # update global model
         self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
-        non_het_model_acc2_avg = sum(
-            non_het_model_acc2s) / len(non_het_model_acc2s)
+        non_het_model_acc2_avg = sum(non_het_model_acc2s) / len(non_het_model_acc2s)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
         acc_avg2 = sum(local_acc2s) / len(local_acc2s)
 
-        result = GlobalTrainResult(loss_map={
-            'loss_avg': loss_avg,
-        }, acc_map={
-            'non_het_model_acc2_avg': non_het_model_acc2_avg,
-            'acc_avg1': acc_avg1,
-            'acc_avg2': acc_avg2
-        })
+        result = GlobalTrainResult(
+            loss_map={
+                "loss_avg": loss_avg,
+            },
+            acc_map={
+                "non_het_model_acc2_avg": non_het_model_acc2_avg,
+                "acc_avg1": acc_avg1,
+                "acc_avg2": acc_avg2,
+            },
+        )
         if self.writer is not None:
-            self.writer.add_scalars('clients_acc1', acc1_dict, round)
-            self.writer.add_scalars('clients_acc2', acc2_dict, round)
-            self.writer.add_scalars('clients_loss', loss_dict, round)
-            self.writer.add_scalars('server_acc_avg', result.acc_map, round)
-            self.writer.add_scalar('server_loss_avg', loss_avg, round)
+            self.writer.add_scalars("clients_acc1", acc1_dict, round)
+            self.writer.add_scalars("clients_acc2", acc2_dict, round)
+            self.writer.add_scalars("clients_loss", loss_dict, round)
+            self.writer.add_scalars("server_acc_avg", result.acc_map, round)
+            self.writer.add_scalar("server_loss_avg", loss_avg, round)
         return result
 
 
 class FedGMMClient(FedClientBase):
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None = None, het_model=False):
-        super().__init__(idx, args, train_loader, test_loader, local_model, writer, het_model)
+    def __init__(
+        self,
+        idx: int,
+        args: Namespace,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        local_model: FedModel,
+        writer: SummaryWriter | None = None,
+        het_model=False,
+    ):
+        super().__init__(
+            idx, args, train_loader, test_loader, local_model, writer, het_model
+        )
         self.M1 = args.m1
         z_dim = args.z_dim
         self.z_dim = z_dim
@@ -105,16 +124,35 @@ class FedGMMClient(FedClientBase):
         self.em_iter = args.em_iter
         self.qs = None
         self.mu = torch.randn(1, self.M1, z_dim).to(device)
-        self.eps = 1.e-1
-        self.var = torch.eye(z_dim).reshape(
-            1, 1, z_dim, z_dim).repeat(1, self.M1, 1, 1).to(device)
-        self.pi = torch.Tensor(1, self.M1, 1).fill_(1. / self.M1).to(device)
+        self.eps = 1.0e-1
+        self.var = (
+            torch.eye(z_dim)
+            .reshape(1, 1, z_dim, z_dim)
+            .repeat(1, self.M1, 1, 1)
+            .to(device)
+        )
+        self.pi = torch.Tensor(1, self.M1, 1).fill_(1.0 / self.M1).to(device)
 
         self.mu.requires_grad = self.var.requires_grad = self.pi.requires_grad = False
         self.criterion = nn.CrossEntropyLoss(reduction="none")
         self.params_fitted = False
 
         self.init_gmm()
+
+    def local_test(self) -> float:
+        model = self.local_model
+        model.eval()
+        device = self.args.device
+        correct = 0
+        total = len(self.test_loader.dataset)
+        with torch.no_grad():
+            for inputs, labels, _ in self.test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                _, outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                correct += (predicted == labels).sum().item()
+        acc = 100.0 * correct / total
+        return acc
 
     def _gather_losses(self) -> torch.Tensor:
         num = len(self.train_loader.dataset)
@@ -172,8 +210,12 @@ class FedGMMClient(FedClientBase):
             pi:         torch.FloatTensor
         """
         assert pi.size() in [
-            (1, self.M1, 1)], "Input pi does not have required tensor dimensions (%i, %i, %i)" % (
-            1, self.M1, 1)
+            (1, self.M1, 1)
+        ], "Input pi does not have required tensor dimensions (%i, %i, %i)" % (
+            1,
+            self.M1,
+            1,
+        )
 
         self.pi.data = pi
 
@@ -185,8 +227,10 @@ class FedGMMClient(FedClientBase):
         args:
             mu:         torch.FloatTensor
         """
-        assert mu.size() in [(self.M1, self.z_dim), (1, self.M1, self.z_dim)], "Input mu does not have required tensor dimensions (%i, %i) or (1, %i, %i)" % (
-            self.M1, self.z_dim, self.M1, self.z_dim)
+        assert mu.size() in [(self.M1, self.z_dim), (1, self.M1, self.z_dim)], (
+            "Input mu does not have required tensor dimensions (%i, %i) or (1, %i, %i)"
+            % (self.M1, self.z_dim, self.M1, self.z_dim)
+        )
 
         if mu.size() == (self.M1, self.z_dim):
             self.mu = mu.unsqueeze(0)
@@ -201,8 +245,12 @@ class FedGMMClient(FedClientBase):
         args:
             var:        torch.FloatTensor
         """
-        assert var.size() in [(self.M1, self.z_dim, self.z_dim), (1, self.M1, self.z_dim, self.z_dim)], "Input var does not have required tensor dimensions (%i, %i, %i) or (1, %i, %i, %i), but instead {}".format(
-            self.M1, self.z_dim, self.z_dim, self.M1, self.z_dim, self.z_dim, var.size())
+        assert var.size() in [
+            (self.M1, self.z_dim, self.z_dim),
+            (1, self.M1, self.z_dim, self.z_dim),
+        ], "Input var does not have required tensor dimensions (%i, %i, %i) or (1, %i, %i, %i), but instead {}".format(
+            self.M1, self.z_dim, self.z_dim, self.M1, self.z_dim, self.z_dim, var.size()
+        )
 
         if var.size() == (self.M1, self.z_dim, self.z_dim):
             self.var = var.unsqueeze(0)
@@ -230,8 +278,16 @@ class FedGMMClient(FedClientBase):
         pi = torch.sum(resp, dim=0, keepdim=True) + self.eps
         mu = torch.sum(resp * x, dim=0, keepdim=True) / pi
         eps = (torch.eye(self.z_dim) * self.eps).to(x.device)
-        var = torch.sum((x - mu).unsqueeze(-1).matmul((x - mu).unsqueeze(-2)) * resp.unsqueeze(-1), dim=0,
-                        keepdim=True) / pi.unsqueeze(3) + eps
+        var = (
+            torch.sum(
+                (x - mu).unsqueeze(-1).matmul((x - mu).unsqueeze(-2))
+                * resp.unsqueeze(-1),
+                dim=0,
+                keepdim=True,
+            )
+            / pi.unsqueeze(3)
+            + eps
+        )
         pi = pi / x.shape[0]
 
         return pi, mu, var
@@ -260,18 +316,20 @@ class FedGMMClient(FedClientBase):
         min_cost = np.inf
 
         for _ in range(init_times):
-            tmp_center = x[np.random.choice(
-                np.arange(x.shape[0]), size=n_centers, replace=True), ...]
-            l2_dis = torch.norm((x.unsqueeze(1).repeat(
-                1, n_centers, 1) - tmp_center), p=2, dim=2)
+            tmp_center = x[
+                np.random.choice(np.arange(x.shape[0]), size=n_centers, replace=True),
+                ...,
+            ]
+            l2_dis = torch.norm(
+                (x.unsqueeze(1).repeat(1, n_centers, 1) - tmp_center), p=2, dim=2
+            )
             l2_cls = torch.argmin(l2_dis, dim=1)
 
             cost = 0
             for c in range(n_centers):
                 if not (l2_cls == c).any():
                     continue
-                cost += torch.norm(x[l2_cls == c] -
-                                   tmp_center[c], p=2, dim=1).mean()
+                cost += torch.norm(x[l2_cls == c] - tmp_center[c], p=2, dim=1).mean()
 
                 assert not torch.isnan(cost)
 
@@ -282,8 +340,9 @@ class FedGMMClient(FedClientBase):
         delta = np.inf
 
         while delta > min_delta:
-            l2_dis = torch.norm((x.unsqueeze(1).repeat(
-                1, n_centers, 1) - center), p=2, dim=2)
+            l2_dis = torch.norm(
+                (x.unsqueeze(1).repeat(1, n_centers, 1) - center), p=2, dim=2
+            )
             l2_cls = torch.argmin(l2_dis, dim=1)
             center_old = center.clone()
 
@@ -295,7 +354,7 @@ class FedGMMClient(FedClientBase):
 
             delta = torch.norm((center_old - center), dim=1).max()
 
-        return (center.unsqueeze(0) * (x_max - x_min) + x_min)
+        return center.unsqueeze(0) * (x_max - x_min) + x_min
 
     def _calculate_log_det(self, var):
         """
@@ -337,15 +396,18 @@ class FedGMMClient(FedClientBase):
 
         # q ~ pi_c * N(x, mu, var) * p(y|x)
         # shape: [n, k, 1]
-        weighted_log_prob = self._estimate_log_prob(x) +\
-            torch.log(self.pi) - logit_losses.view(-1, 1, 1)
+        weighted_log_prob = (
+            self._estimate_log_prob(x)
+            + torch.log(self.pi)
+            - logit_losses.view(-1, 1, 1)
+        )
 
         log_prob_norm = torch.logsumexp(weighted_log_prob, dim=1, keepdim=True)
         log_resp = weighted_log_prob - log_prob_norm
         return torch.mean(log_prob_norm), log_resp
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
-        print(f'[client {self.idx}] local train round {round}:')
+        print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model
         model.train()
         model.zero_grad()
@@ -354,7 +416,8 @@ class FedGMMClient(FedClientBase):
         acc1 = self.local_test()
         # Set optimizer for the local updates
         optimizer = torch.optim.SGD(
-            model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005)
+            model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
+        )
 
         for _ in range(local_epoch):
             # EM algorithmn iterations
@@ -375,17 +438,16 @@ class FedGMMClient(FedClientBase):
         acc2 = self.local_test()
 
         result.weights = model.state_dict()
-        result.acc_map['acc1'] = acc1
-        result.acc_map['acc2'] = acc2
+        result.acc_map["acc1"] = acc1
+        result.acc_map["acc2"] = acc2
         round_loss = np.sum(round_losses) / len(round_losses)
-        result.loss_map['round_loss'] = round_loss
+        result.loss_map["round_loss"] = round_loss
         print(
-            f'[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}')
+            f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
+        )
 
         if self.writer is not None:
-            self.writer.add_scalars(
-                f"client_{self.idx}_acc", result.acc_map, round)
-            self.writer.add_scalar(
-                f"client_{self.idx}_loss", round_loss, round)
+            self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
+            self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result

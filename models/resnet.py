@@ -7,16 +7,24 @@ import torch.distributions as distributions
 
 
 class CifarResnet(FedModel):
-    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, backbone='resnet18', model_het=False, z_dim=128):
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        backbone="resnet18",
+        model_het=False,
+        z_dim=128,
+    ):
         super().__init__()
         self.probabilistic = probabilistic
         self.num_samples = num_samples
         self.model_het = model_het
         self.z_dim = z_dim
 
-        if backbone == 'resnet18':
+        if backbone == "resnet18":
             self.backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
-        elif backbone == 'resnet50':
+        elif backbone == "resnet50":
             self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
         else:
             raise NotImplementedError()
@@ -25,7 +33,8 @@ class CifarResnet(FedModel):
         self.backbone.fc = nn.Linear(self.backbone.fc.in_features, out_dim)
         self.fc2 = nn.Linear(z_dim, num_classes, bias=True)
         self.classifier_weight_keys = [
-            'fc2.weight', 'fc2.bias',
+            "fc2.weight",
+            "fc2.bias",
         ]
 
     def forward(self, x):
@@ -36,10 +45,11 @@ class CifarResnet(FedModel):
             z = x
         else:
             z_params = x
-            z_mu = z_params[:, :self.z_dim]
-            z_sigma = F.softplus(z_params[:, self.z_dim:])
+            z_mu = z_params[:, : self.z_dim]
+            z_sigma = F.softplus(z_params[:, self.z_dim :])
             z_dist = distributions.Independent(
-                distributions.normal.Normal(z_mu, z_sigma), 1)
+                distributions.normal.Normal(z_mu, z_sigma), 1
+            )
             z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #

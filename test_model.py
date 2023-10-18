@@ -6,12 +6,14 @@ from models.resnet import CifarResnet
 from options import parse_args
 from torch import nn
 
+
 class TestModule(nn.Module):
     def __init__(self):
         super().__init__()
         self.C = nn.Parameter(torch.randn(3))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # test = TestModule()
     # cnn.add_module('test', test)
     # print(cnn.test.C)
