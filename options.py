@@ -47,5 +47,9 @@ def parse_args() -> argparse.Namespace:
                         help='Number of GMM components')
     parser.add_argument('--z_dim', type=int, default=128,
                         help='Dimension of z')
+    parser.add_argument('--get_index', type=bool, default=False,
+                        help='Get index of loader')
+    parser.add_argument('--em_iter', type=int, default=1,
+                        help='Iterations of EM algorithmn')
     args = parser.parse_args()
     return args

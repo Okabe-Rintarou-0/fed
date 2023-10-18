@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from algorithmn.base import FedClientBase, FedServerBase
 from torch import nn
 import numpy as np
+from torch import distributions
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
@@ -101,6 +102,8 @@ class FedGMMClient(FedClientBase):
         z_dim = args.z_dim
         self.z_dim = z_dim
         device = args.device
+        self.em_iter = args.em_iter
+        self.qs = None
         self.mu = torch.randn(1, self.M1, z_dim).to(device)
         self.eps = 1.e-1
         self.var = torch.eye(z_dim).reshape(
@@ -113,16 +116,27 @@ class FedGMMClient(FedClientBase):
 
         self.init_gmm()
 
-    def _gather(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        zs, losses = [], []
+    def _gather_losses(self) -> torch.Tensor:
+        num = len(self.train_loader.dataset)
+        losses = np.zeros(num)
         with torch.no_grad():
-            for x, labels in self.train_loader:
+            for x, labels, index in self.train_loader:
+                x = x.to(self.device)
+                _, logits = self.local_model(x)
+                losses[index] = self.criterion(logits, labels)
+        return torch.Tensor(losses)
+
+    def _gather(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        num = len(self.train_loader.dataset)
+        zs, losses = np.zeros((num, self.z_dim)), np.zeros(num)
+        with torch.no_grad():
+            for x, labels, index in self.train_loader:
                 x = x.to(self.device)
                 z, logits = self.local_model(x)
-                zs.append(z)
-                losses.append(self.criterion(logits, labels))
-        zs = torch.cat(zs)
-        losses = torch.cat(losses)
+                zs[index] = z
+                losses[index] = self.criterion(logits, labels)
+        zs = torch.Tensor(zs)
+        losses = torch.Tensor(losses)
         return zs, losses
 
     def init_gmm(self):
@@ -135,18 +149,21 @@ class FedGMMClient(FedClientBase):
         self.__update_mu(mu)
         self.__update_var(var)
 
-    def __em(self, x):
+    def __em(self):
         """
         Performs one iteration of the expectation-maximization algorithm by calling the respective subroutines.
         args:
             x:          torch.Tensor (n, 1, d)
         """
-        _, log_resp = self._e_step(x)
-        pi, mu, var = self._m_step(x, log_resp)
+        z, losses = self._gather()
+        _, log_resp = self._e_step(z, losses)
+        pi, mu, var = self._m_step(z, log_resp)
 
         self.__update_pi(pi)
         self.__update_mu(mu)
         self.__update_var(var)
+
+        self.qs = torch.exp(log_resp)
 
     def __update_pi(self, pi):
         """
@@ -212,11 +229,9 @@ class FedGMMClient(FedClientBase):
 
         pi = torch.sum(resp, dim=0, keepdim=True) + self.eps
         mu = torch.sum(resp * x, dim=0, keepdim=True) / pi
-
         eps = (torch.eye(self.z_dim) * self.eps).to(x.device)
         var = torch.sum((x - mu).unsqueeze(-1).matmul((x - mu).unsqueeze(-2)) * resp.unsqueeze(-1), dim=0,
                         keepdim=True) / pi.unsqueeze(3) + eps
-
         pi = pi / x.shape[0]
 
         return pi, mu, var
@@ -290,12 +305,8 @@ class FedGMMClient(FedClientBase):
         """
         log_det = torch.empty(size=(self.M1,)).to(var.device)
 
-        # The determinant value of a diagonal matrix is equal to the sum of the elements on its diagonal.
-        for k in range(self.M1):
-            log_det[k] = 2 * \
-                torch.log(torch.diagonal(
-                    torch.linalg.cholesky(var[0, k]))).sum()
-
+        log_det = torch.linalg.slogdet(var)
+        log_det = log_det.logabsdet * log_det.sign
         return log_det.unsqueeze(-1)
 
     def _estimate_log_prob(self, x):
@@ -306,30 +317,10 @@ class FedGMMClient(FedClientBase):
         returns:
             log_prob:     torch.Tensor (n, k, 1)
         """
-        x = self.check_size(x)
-
-        mu = self.mu
-        var = self.var
-
-        precision = torch.inverse(var)
-
-        d = x.shape[-1]
-
-        log_2pi = d * np.log(2. * math.pi)
-
-        log_det = self._calculate_log_det(precision)
-
-        x_mu_T = (x - mu).unsqueeze(-2)
-        x_mu = (x - mu).unsqueeze(-1)
-
-        x_mu_T_precision = calculate_matmul_n_times(self.M1, x_mu_T, precision)
-        x_mu_T_precision_x_mu = calculate_matmul(x_mu_T_precision, x_mu)
-
-        log_prob = -.5 * (log_2pi - log_det + x_mu_T_precision_x_mu)
-
+        multivariate_normal = distributions.MultivariateNormal(self.mu, self.var)
+        log_prob = multivariate_normal.log_prob(x)
         assert not torch.isnan(log_prob).any()
-
-        return log_prob
+        return log_prob.unsqueeze(-1)
 
     def _e_step(self, x, logit_losses: torch.Tensor):
         """
@@ -348,10 +339,9 @@ class FedGMMClient(FedClientBase):
         # shape: [n, k, 1]
         weighted_log_prob = self._estimate_log_prob(x) +\
             torch.log(self.pi) - logit_losses.view(-1, 1, 1)
-        
+
         log_prob_norm = torch.logsumexp(weighted_log_prob, dim=1, keepdim=True)
         log_resp = weighted_log_prob - log_prob_norm
-
         return torch.mean(log_prob_norm), log_resp
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
@@ -367,18 +357,17 @@ class FedGMMClient(FedClientBase):
             model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005)
 
         for _ in range(local_epoch):
-            data_loader = iter(self.train_loader)
-            for _ in range(len(data_loader)):
-                images, labels = next(data_loader)
+            # EM algorithmn iterations
+            for _ in range(self.em_iter):
+                self.__em()
+
+            for images, labels, index in self.train_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 _, output = model(images)
-
-                # ---------------- Client E-stage ----------------- #
-                for m1 in range(self.M1):
-                    pass
-
-                loss = self.criterion(output, labels)
+                qs = self.qs[index].squeeze()
+                qs = torch.sum(qs, dim=-1)
+                loss = self.criterion(output, labels).mean()
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())

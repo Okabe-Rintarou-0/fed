@@ -12,25 +12,24 @@ class TestModule(nn.Module):
         self.C = nn.Parameter(torch.randn(3))
 
 if __name__ == '__main__':
-    cnn = CifarCNN()
-    test = TestModule()
-    cnn.add_module('test', test)
-    print(cnn.test.C)
-    print(test.C)
+    # test = TestModule()
+    # cnn.add_module('test', test)
+    # print(cnn.test.C)
+    # print(test.C)
 
-    x = torch.sum(test.C ** 2)
-    x.backward()
+    # x = torch.sum(test.C ** 2)
+    # x.backward()
 
-    print(cnn.test.C.grad)
-    print(test.C.grad)
+    # print(cnn.test.C.grad)
+    # print(test.C.grad)
 
-    x = torch.sum(test.C ** 2)
-    x.backward()
+    # x = torch.sum(test.C ** 2)
+    # x.backward()
 
-    print(cnn.test.C.grad)
-    print(test.C.grad)
-    for key, _ in cnn.named_parameters():
-        print(key)
+    # print(cnn.test.C.grad)
+    # print(test.C.grad)
+    # for key, _ in cnn.named_parameters():
+    #     print(key)
     # x, y = cnn(torch.zeros(1, 3, 32, 32))
     # print(y.size())
     # print(torch.sum(y, 1))
@@ -40,5 +39,9 @@ if __name__ == '__main__':
     # print(y.size())
     # print(torch.sum(y, 1))
     args = parse_args()
+    cnn = CifarCNN(z_dim=args.z_dim)
     train_loaders, test_loaders = get_dataloaders(args)
     cli = FedGMMClient(0, args, train_loaders[0], test_loaders[0], cnn)
+
+    for i in range(20):
+        cli.local_train(1, i)

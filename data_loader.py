@@ -13,8 +13,9 @@ DATASET_PATH = './data'
 
 
 class DatasetSplit(Dataset):
-    def __init__(self, dataset, index=None):
+    def __init__(self, dataset, index=None, get_index=False):
         super().__init__()
+        self.get_index = get_index
         self.dataset = dataset
         self.idxs = [int(i) for i in index] if index is not None else [
             i for i in range(len(dataset))]
@@ -22,22 +23,24 @@ class DatasetSplit(Dataset):
     def __len__(self):
         return len(self.idxs)
 
-    def __getitem__(self, item):
-        x, label = self.dataset[self.idxs[item]]
+    def __getitem__(self, index):
+        x, label = self.dataset[self.idxs[index]]
+        if self.get_index:
+            return x, label, index
         return x, label
 
 
-def gen_data_loaders(dataset: Dataset, client_idxs: List[List[int]], batch_size: int, shuffle: bool):
+def gen_data_loaders(dataset: Dataset, client_idxs: List[List[int]], batch_size: int, shuffle: bool, get_index: bool):
     dataloaders = []
     for client_idx in client_idxs:
-        splitted_dataset = DatasetSplit(dataset, list(client_idx))
+        splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)
         dataloader = DataLoader(
             dataset=splitted_dataset, batch_size=batch_size, shuffle=shuffle)
         dataloaders.append(dataloader)
     return dataloaders
 
 
-def mnist_iid(dataset: datasets.MNIST, num_clients: int, batch_size: int, shuffle: bool) -> List[DataLoader]:
+def mnist_iid(dataset: datasets.MNIST, num_clients: int, batch_size: int, shuffle: bool, get_index: bool) -> List[DataLoader]:
     """
     Sample I.I.D. client data from MNIST dataset
     :param dataset: MNIST
@@ -51,10 +54,10 @@ def mnist_iid(dataset: datasets.MNIST, num_clients: int, batch_size: int, shuffl
         select_set = set(np.random.choice(all_idxs, num_items, replace=False))
         all_idxs = list(set(all_idxs) - select_set)
         client_idxs.append(select_set)
-    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
-def cifar10_iid(dataset: datasets.CIFAR10, num_clients: int, batch_size: int, shuffle: bool):
+def cifar10_iid(dataset: datasets.CIFAR10, num_clients: int, batch_size: int, shuffle: bool, get_index: bool):
     """
     Sample I.I.D. client data from CIFAR10 dataset
     """
@@ -90,10 +93,10 @@ def cifar10_iid(dataset: datasets.CIFAR10, num_clients: int, batch_size: int, sh
         assert(
             len(np.unique(torch.tensor(dataset.targets)[value]))) == shard_per_user
 
-    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
-def cifar10_noniid(dataset: datasets.CIFAR10, num_clients: int, noniid_percent: float, batch_size: int, shuffle: bool, local_size=600, train=True):
+def cifar10_noniid(dataset: datasets.CIFAR10, num_clients: int, noniid_percent: float, batch_size: int, shuffle: bool, get_index: bool, local_size=600, train=True):
     """
     Sample non-I.I.D client data from MNIST dataset
     """
@@ -161,7 +164,7 @@ def cifar10_noniid(dataset: datasets.CIFAR10, num_clients: int, noniid_percent: 
                 (client_idxs[i], idxs[start:start+noniid_num]), axis=0)
             label_used[y] = label_used[y] + noniid_num
         client_idxs[i] = client_idxs[i].astype(int)
-    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
 def dirichlet_partition(num_dataset: int, num_clients: int, targets: np.array, beta: float) -> List[List[int]]:
@@ -193,11 +196,11 @@ def dirichlet_partition(num_dataset: int, num_clients: int, targets: np.array, b
     return client_idxs
 
 
-def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: float, batch_size: int, shuffle: bool):
+def cifar10_noniid_dirichlet(dataset: datasets.CIFAR10, num_clients: int, beta: float, batch_size: int, shuffle: bool, get_index: bool):
     num_dataset = len(dataset)
     targets = np.array(dataset.targets)
     client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
-    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
 def mnist_dataset() -> Tuple[Dataset, Dataset]:
@@ -239,6 +242,9 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     iid = args.iid
     num_clients = args.num_clients
     local_bs = args.local_bs
+    if args.train_rule == 'FedGMM':
+        args.get_index = True
+    get_index = args.get_index
 
     train_loaders, test_loaders = [], []
     if dataset == 'mnist':
@@ -252,17 +258,17 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
         trainset, testset = cifar10_dataset()
         if iid:
             train_loaders = cifar10_iid(
-                trainset, num_clients, local_bs, shuffle=True
+                trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
             test_loaders = cifar10_iid(
-                testset, num_clients, local_bs, shuffle=False
+                testset, num_clients, local_bs, shuffle=False, get_index=get_index
             )
         else:
             train_loaders = cifar10_noniid_dirichlet(
-                trainset, num_clients, args.beta, local_bs, shuffle=True
+                trainset, num_clients, args.beta, local_bs, shuffle=True, get_index=get_index
             )
             test_loaders = cifar10_noniid_dirichlet(
-                testset, num_clients, args.beta, local_bs, shuffle=False
+                testset, num_clients, args.beta, local_bs, shuffle=False, get_index=get_index
             )
     else:
         raise NotImplementedError()

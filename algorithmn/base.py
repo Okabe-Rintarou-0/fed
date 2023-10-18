@@ -42,7 +42,7 @@ class FedClientBase:
         correct = 0
         total = len(self.test_loader.dataset)
         with torch.no_grad():
-            for inputs, labels in self.test_loader:
+            for inputs, labels, _ in self.test_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 _, outputs = model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
