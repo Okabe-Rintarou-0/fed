@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from datasets import PACS
 
-from models.cnn import CNN_FMNIST, SimpleCNN
+from models.cnn import CNN_FMNIST, PACSCNN, CifarCNN
 from models.resnet import CifarResnet
 
 DATASET_PATH = "./data"
@@ -293,7 +293,7 @@ def pacs(
     train_env.remove(test_env)
     train_loaders, test_loaders = [], []
     num_train_env = len(train_env)
-    
+
     test_dataset = DatasetSplit(dataset=pacs_dataset[test_env], get_index=get_index)
 
     for idx in range(num_clients):
@@ -301,8 +301,12 @@ def pacs(
         env = train_env[env_idx]
         train_dataset = DatasetSplit(dataset=pacs_dataset[env], get_index=get_index)
 
-        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(
+            dataset=train_dataset, batch_size=batch_size, shuffle=True
+        )
+        test_loader = DataLoader(
+            dataset=test_dataset, batch_size=batch_size, shuffle=False
+        )
         train_loaders.append(train_loader)
         test_loaders.append(test_loader)
 
@@ -365,13 +369,20 @@ def get_model(args: Namespace) -> nn.Module:
     prob = args.prob
     z_dim = args.z_dim
     if dataset in ["cifar", "cifar10", "cinic", "cinic_sep", "pacs"]:
-        global_model = SimpleCNN(
+        global_model = CifarCNN(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
             z_dim=z_dim,
         )
         args.lr = 0.02
+    elif dataset in ["pacs"]:
+        global_model = PACSCNN(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
     elif dataset == "fmnist":
         global_model = CNN_FMNIST()
     elif dataset == "emnist":

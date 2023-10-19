@@ -1,7 +1,7 @@
 import torch
 from algorithmn.fedgmm import FedGMMClient
 from data_loader import get_dataloaders
-from models.cnn import SimpleCNN
+from models.cnn import PACSCNN, CifarCNN
 from models.resnet import CifarResnet
 from options import parse_args
 from torch import nn
@@ -41,9 +41,12 @@ if __name__ == "__main__":
     # print(y.size())
     # print(torch.sum(y, 1))
     args = parse_args()
-    cnn = SimpleCNN(z_dim=args.z_dim)
-    train_loaders, test_loaders = get_dataloaders(args)
-    cli = FedGMMClient(0, args, train_loaders[0], test_loaders[0], cnn)
+    args.dataset = "pacs"
+    pacs = PACSCNN()
+    args.num_client = 1
+    train_loaders, _ = get_dataloaders(args)
+    loader = train_loaders[0]
 
-    for i in range(20):
-        cli.local_train(1, i)
+    images, _ = next(iter(loader))
+
+    print(pacs(images))

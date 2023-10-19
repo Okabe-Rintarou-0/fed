@@ -14,6 +14,7 @@ class SimpleCNN(FedModel):
         num_samples=1,
         model_het=False,
         z_dim=128,
+        conv_out_dim=64 * 3 * 3,
     ):
         super().__init__()
         self.probabilistic = probabilistic
@@ -27,7 +28,7 @@ class SimpleCNN(FedModel):
         self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
 
         out_dim = z_dim * 2 if probabilistic else z_dim
-        self.fc1 = nn.Linear(64 * 3 * 3, out_dim)
+        self.fc1 = nn.Linear(conv_out_dim, out_dim)
         self.fc2 = nn.Linear(z_dim, num_classes, bias=True)
         self.base_weight_keys = [
             "conv1.weight",
@@ -74,6 +75,39 @@ class SimpleCNN(FedModel):
             return list(self.state_dict().keys())
         # in this case, only classfier can be shared
         return self.classifier_weight_keys
+
+
+class CifarCNN(SimpleCNN):
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes,
+            probabilistic,
+            num_samples,
+            model_het,
+            z_dim,
+            64 * 3 * 3,
+        )
+
+
+class PACSCNN(SimpleCNN):
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes, probabilistic, num_samples, model_het, z_dim, 64 * 27 * 27
+        )
 
 
 class CNN_FMNIST(nn.Module):
