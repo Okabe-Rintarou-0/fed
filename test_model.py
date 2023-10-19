@@ -40,13 +40,4 @@ if __name__ == "__main__":
     # x, y = resnet(torch.zeros(3, 3, 32, 32))
     # print(y.size())
     # print(torch.sum(y, 1))
-    args = parse_args()
-    args.dataset = "pacs"
-    pacs = PACSCNN()
-    args.num_client = 1
-    train_loaders, _ = get_dataloaders(args)
-    loader = train_loaders[0]
-
-    images, _ = next(iter(loader))
-
-    print(pacs(images))
+    pass
