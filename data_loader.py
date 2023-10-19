@@ -5,8 +5,9 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
+from datasets import PACS
 
-from models.cnn import CNN_FMNIST, CifarCNN
+from models.cnn import CNN_FMNIST, SimpleCNN
 from models.resnet import CifarResnet
 
 DATASET_PATH = "./data"
@@ -284,14 +285,36 @@ def cifar10_dataset() -> Tuple[Dataset, Dataset]:
     return trainset, testset
 
 
+def pacs(
+    num_clients: int, batch_size: int, get_index: bool, test_env=0
+) -> Tuple[List[DataLoader], List[DataLoader]]:
+    pacs_dataset = PACS(root=DATASET_PATH, test_envs=[test_env], augment=False)
+    train_env = list(range(len(pacs_dataset.ENVIRONMENTS)))
+    train_env.remove(test_env)
+    train_loaders, test_loaders = [], []
+    num_train_env = len(train_env)
+    
+    test_dataset = DatasetSplit(dataset=pacs_dataset[test_env], get_index=get_index)
+
+    for idx in range(num_clients):
+        env_idx = idx % num_train_env
+        env = train_env[env_idx]
+        train_dataset = DatasetSplit(dataset=pacs_dataset[env], get_index=get_index)
+
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+        train_loaders.append(train_loader)
+        test_loaders.append(test_loader)
+
+    return train_loaders, test_loaders
+
+
 # get_dataloaders returns train and test dataloader of given dataset
 def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]]:
     dataset = args.dataset
     iid = args.iid
     num_clients = args.num_clients
     local_bs = args.local_bs
-    if args.train_rule == "FedGMM":
-        args.get_index = True
     get_index = args.get_index
 
     train_loaders, test_loaders = [], []
@@ -326,6 +349,8 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=False,
                 get_index=get_index,
             )
+    elif dataset in ["pacs"]:
+        return pacs(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
     else:
         raise NotImplementedError()
 
@@ -339,8 +364,8 @@ def get_model(args: Namespace) -> nn.Module:
     model_het = args.model_het
     prob = args.prob
     z_dim = args.z_dim
-    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        global_model = CifarCNN(
+    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep", "pacs"]:
+        global_model = SimpleCNN(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,

@@ -1,7 +1,7 @@
 import torch
 from algorithmn.fedgmm import FedGMMClient
 from data_loader import get_dataloaders
-from models.cnn import CifarCNN
+from models.cnn import SimpleCNN
 from models.resnet import CifarResnet
 from options import parse_args
 from torch import nn
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # print(y.size())
     # print(torch.sum(y, 1))
     args = parse_args()
-    cnn = CifarCNN(z_dim=args.z_dim)
+    cnn = SimpleCNN(z_dim=args.z_dim)
     train_loaders, test_loaders = get_dataloaders(args)
     cli = FedGMMClient(0, args, train_loaders[0], test_loaders[0], cnn)
 

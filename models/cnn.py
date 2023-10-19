@@ -6,7 +6,7 @@ import torch.distributions as distributions
 from models.base import FedModel
 
 
-class CifarCNN(FedModel):
+class SimpleCNN(FedModel):
     def __init__(
         self,
         num_classes=10,
@@ -15,7 +15,7 @@ class CifarCNN(FedModel):
         model_het=False,
         z_dim=128,
     ):
-        super(CifarCNN, self).__init__()
+        super().__init__()
         self.probabilistic = probabilistic
         self.num_samples = num_samples
         self.model_het = model_het

@@ -58,6 +58,12 @@ def parse_args() -> argparse.Namespace:
         help="Use heterogeneous model",
     )
     parser.add_argument(
+        "--domain_het",
+        action="store_true",
+        default=False,
+        help="Use heterogeneous domain",
+    )
+    parser.add_argument(
         "--model_het_percent", default=0.2, help="Heterogeneous model percent"
     )
     parser.add_argument(
@@ -74,4 +80,12 @@ def parse_args() -> argparse.Namespace:
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
     args = parser.parse_args()
+
+    if args.train_rule == "FedGMM":
+        args.get_index = True
+
+    if args.dataset == "pacs":
+        args.domain_het = True
+        args.iid = True
+
     return args

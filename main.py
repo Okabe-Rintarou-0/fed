@@ -66,8 +66,12 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_prob"
     if not args.iid:
         sub_dir_name = f"{sub_dir_name}_non_iid"
+    if args.domain_het:
+        sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
+
+    sub_dir_name = f"{sub_dir_name}_{args.dataset}"
 
     tensorboard_path = os.path.join("./tensorboard", sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)

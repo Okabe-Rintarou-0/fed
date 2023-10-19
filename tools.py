@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 import cvxpy as cp
-from models import CifarCNN
+from models import SimpleCNN
 
 
 def pairwise(data):
@@ -321,7 +321,7 @@ if __name__ == "__main__":
     num_clients = 10
     adjacency_matrix = torch.ones(num_clients, num_clients) / (num_clients)
     client_idxs = list(range(int(num_clients / 2)))
-    model = CifarCNN(num_classes=10)
+    model = SimpleCNN(num_classes=10)
     model_weights = model.state_dict()
     client_weights_map = {idx: copy.deepcopy(model_weights) for idx in client_idxs}
     for idx in client_weights_map:
