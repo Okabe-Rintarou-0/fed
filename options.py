@@ -29,6 +29,9 @@ def parse_args() -> argparse.Namespace:
         "--lam", type=float, default=1.0, help="coefficient for reg term"
     )
     parser.add_argument(
+        "--record-dist", type=bool, default=True, help="Record label distribution"
+    )
+    parser.add_argument(
         "--device",
         default="cpu",
         help="To use cuda, set to a specific GPU ID. Default set to use CPU.",

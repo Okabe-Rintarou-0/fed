@@ -128,7 +128,8 @@ if __name__ == "__main__":
             )
             write_client_datasets(idx, writer, train_loader, True)
             write_client_datasets(idx, writer, test_loader, False)
-            write_client_label_distribution(idx, writer, train_loader, args.num_classes)
+            if args.record_dist:
+                write_client_label_distribution(idx, writer, train_loader, args.num_classes)
             local_clients.append(client)
             bar.update(1)
 
