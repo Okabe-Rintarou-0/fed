@@ -368,7 +368,7 @@ def get_model(args: Namespace) -> nn.Module:
     model_het = args.model_het
     prob = args.prob
     z_dim = args.z_dim
-    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep", "pacs"]:
+    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
         global_model = CifarCNN(
             num_classes=num_classes,
             probabilistic=prob,
