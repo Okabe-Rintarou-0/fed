@@ -166,15 +166,13 @@ class FedGMMClient(FedClientBase):
 
     def _gather(self) -> Tuple[torch.Tensor, torch.Tensor]:
         num = len(self.train_loader.dataset)
-        zs, losses = torch.zeros((num, self.z_dim)), torch.zeros(num)
+        zs, losses = torch.zeros((num, self.z_dim)).to(self.device), torch.zeros(num).to(self.device)
         with torch.no_grad():
             for x, labels, index in self.train_loader:
                 x = x.to(self.device)
                 z, logits = self.local_model(x)
-                zs[index] = z
-                losses[index] = self.criterion(logits, labels)
-        zs = torch.Tensor(zs)
-        losses = torch.Tensor(losses)
+                zs[index] = z.to(self.device)
+                losses[index] = self.criterion(logits.to(self.device), labels.to(self.device)).to(self.device)
         return zs, losses
 
     def init_gmm(self):

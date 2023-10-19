@@ -136,6 +136,8 @@ class FedSRClient(FedClientBase):
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
 
+        self.local_model.to(self.device)
+
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model
@@ -157,12 +159,10 @@ class FedSRClient(FedClientBase):
                 loss = self.criterion(logits, labels)
 
                 if self.l2r_coeff != 0.0:
-                    reg_L2R = torch.zeros_like(loss)
                     reg_L2R = z.norm(dim=1).mean()
                     loss += self.l2r_coeff * reg_L2R
 
                 if self.cmi_coeff != 0.0:
-                    reg_CMI = torch.zeros_like(loss)
                     r_sigma_softplus = F.softplus(self.r.sigma)
                     r_mu = self.r.mu[y]
                     r_sigma = r_sigma_softplus[y]

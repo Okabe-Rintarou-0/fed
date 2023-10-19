@@ -90,17 +90,27 @@ def aggregate_protos(local_protos_list, local_label_sizes_list):
 
 
 def write_client_datasets(
-    idx: int, writer: SummaryWriter, dataloader: DataLoader, train: bool
+    idx: int, writer: SummaryWriter, dataloader: DataLoader, train: bool, get_index: bool
 ):
     tag = f'client_{idx}_{"train" if train else "test"}_dataset'
     data_iter = iter(dataloader)
-    imgs, _ = next(data_iter)
+    if get_index:
+        imgs, _, _ = next(data_iter)
+    else:
+        imgs, _ = next(data_iter)
     writer.add_images(tag, imgs)
 
 
-def calc_label_distribution(dataloader: DataLoader, num_classes: int):
+def calc_label_distribution(dataloader: DataLoader, num_classes: int, get_index: bool):
     distribution = [0] * num_classes
-    for _, labels in dataloader:
+    num_iter = len(dataloader)
+    data_iter = iter(dataloader)
+    for _ in range(num_iter):
+        if get_index:
+            _, labels, _ = next(data_iter)
+        else:
+            _, labels = next(data_iter)
+
         for label in labels:
             distribution[label] += 1
     return distribution
@@ -195,10 +205,10 @@ def get_head_agg_weight(num_users, Vars, Hs):
 
 
 def write_client_label_distribution(
-    idx: int, writer: SummaryWriter, train_loader: DataLoader, num_classes: int
+    idx: int, writer: SummaryWriter, train_loader: DataLoader, num_classes: int, get_index: bool
 ):
     # print(f"calculating client {idx}'s label distribution...", end='')
-    train_distribution = calc_label_distribution(train_loader, num_classes)
+    train_distribution = calc_label_distribution(train_loader, num_classes, get_index=get_index)
     labels = list(range(num_classes))
     plt.clf()
     plt.bar(labels, train_distribution)
