@@ -197,14 +197,14 @@ def get_head_agg_weight(num_users, Vars, Hs):
 def write_client_label_distribution(
     idx: int, writer: SummaryWriter, train_loader: DataLoader, num_classes: int
 ):
-    print(f"calculating client {idx}'s label distribution...", end='')
+    # print(f"calculating client {idx}'s label distribution...", end='')
     train_distribution = calc_label_distribution(train_loader, num_classes)
     labels = list(range(num_classes))
     plt.clf()
     plt.bar(labels, train_distribution)
     plt.xticks(labels)
     writer.add_figure(f"client_{idx}_label_distribution", plt.gcf())
-    print('done')
+    # print('done')
 
 
 def show_img_batch(imgs):

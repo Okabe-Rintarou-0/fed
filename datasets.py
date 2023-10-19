@@ -7,22 +7,18 @@ import git
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-DATASETS = [
-    "PACS",
-    "OfficeHome",
-    "DomainNet",
-]
+from tqdm import tqdm
 
 
-def get_dataset_class(dataset_name):
-    """Return the dataset class with the given name."""
-    if dataset_name not in globals():
-        raise NotImplementedError("Dataset not found: {}".format(dataset_name))
-    return globals()[dataset_name]
+class CloneProgress(git.RemoteProgress):
+    def __init__(self, repo: str):
+        super().__init__()
+        self.pbar = tqdm(desc=f"Clonning {repo}")
 
-
-def num_environments(dataset_name):
-    return len(get_dataset_class(dataset_name).ENVIRONMENTS)
+    def update(self, op_code, cur_count, max_count=None, message=""):
+        self.pbar.total = max_count
+        self.pbar.n = cur_count
+        self.pbar.refresh()
 
 
 class MultipleDomainDataset:
@@ -93,7 +89,9 @@ class PACS(MultipleEnvironmentImageFolder):
 
     def download_dataset(self):
         git.Repo.clone_from(
-            "https://github.com/MachineLearning2020/Homework3-PACS", "./Homework3-PACS"
+            "https://github.com/MachineLearning2020/Homework3-PACS",
+            "./Homework3-PACS",
+            progress=CloneProgress("github.com/MachineLearning2020/Homework3-PACS"),
         )
         shutil.move("./Homework3-PACS/PACS", self.dir)
         shutil.rmtree("./Homework3-PACS")

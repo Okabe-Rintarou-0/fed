@@ -291,23 +291,43 @@ def pacs(
     pacs_dataset = PACS(root=DATASET_PATH, test_envs=[test_env], augment=False)
     train_env = list(range(len(pacs_dataset.ENVIRONMENTS)))
     train_env.remove(test_env)
-    train_loaders, test_loaders = [], []
+    train_loaders, test_loaders = [None] * num_clients, []
     num_train_env = len(train_env)
+
+    env_num_clients_map = {}
+    for i in range(num_train_env):
+        env_num_clients_map[i] = num_clients // num_train_env
+
+    for i in range(num_clients % num_train_env):
+        env_num_clients_map[i] += 1
+
+    for i in range(num_train_env):
+        env = train_env[i]
+        train_dataset = pacs_dataset[env]
+
+        dataset_len = len(pacs_dataset[env])
+        all_idxs = list(range(dataset_len))
+        env_num_clients = env_num_clients_map[i]
+        data_size_per_client = dataset_len // env_num_clients
+        for j in range(env_num_clients):
+            idx = i + j * num_train_env
+            select_set = set(
+                np.random.choice(all_idxs, data_size_per_client, replace=False)
+            )
+            all_idxs = list(set(all_idxs) - select_set)
+            splitted_dataset = DatasetSplit(
+                dataset=train_dataset, index=list(select_set), get_index=get_index
+            )
+            train_loaders[idx] = DataLoader(
+                dataset=splitted_dataset, batch_size=batch_size, shuffle=True
+            )
 
     test_dataset = DatasetSplit(dataset=pacs_dataset[test_env], get_index=get_index)
 
     for idx in range(num_clients):
-        env_idx = idx % num_train_env
-        env = train_env[env_idx]
-        train_dataset = DatasetSplit(dataset=pacs_dataset[env], get_index=get_index)
-
-        train_loader = DataLoader(
-            dataset=train_dataset, batch_size=batch_size, shuffle=True
-        )
         test_loader = DataLoader(
             dataset=test_dataset, batch_size=batch_size, shuffle=False
         )
-        train_loaders.append(train_loader)
         test_loaders.append(test_loader)
 
     return train_loaders, test_loaders

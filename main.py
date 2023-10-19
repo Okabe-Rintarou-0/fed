@@ -4,6 +4,7 @@ import os
 import random
 import numpy as np
 import torch
+from tqdm import tqdm
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedgmm import FedGMMClient, FedGMMServer
@@ -106,28 +107,30 @@ if __name__ == "__main__":
     with open(training_data_json, "w") as f:
         f.write(json.dumps(training_data))
 
-    for idx in client_idxs:
-        is_heterogeneous_client = idx in heterogeneous_clients
-        if is_heterogeneous_client:
-            local_model = deepcopy(heterogeneous_model)
-        else:
-            local_model = deepcopy(global_model)
+    with tqdm(total=args.num_clients, desc="loading client") as bar:
+        for idx in client_idxs:
+            is_heterogeneous_client = idx in heterogeneous_clients
+            if is_heterogeneous_client:
+                local_model = deepcopy(heterogeneous_model)
+            else:
+                local_model = deepcopy(global_model)
 
-        train_loader = train_loaders[idx]
-        test_loader = test_loaders[idx]
-        client = Client(
-            idx=idx,
-            args=args,
-            train_loader=train_loader,
-            test_loader=test_loader,
-            local_model=local_model,
-            writer=writer,
-            het_model=is_heterogeneous_client,
-        )
-        write_client_datasets(idx, writer, train_loader, True)
-        write_client_datasets(idx, writer, test_loader, False)
-        write_client_label_distribution(idx, writer, train_loader, args.num_classes)
-        local_clients.append(client)
+            train_loader = train_loaders[idx]
+            test_loader = test_loaders[idx]
+            client = Client(
+                idx=idx,
+                args=args,
+                train_loader=train_loader,
+                test_loader=test_loader,
+                local_model=local_model,
+                writer=writer,
+                het_model=is_heterogeneous_client,
+            )
+            write_client_datasets(idx, writer, train_loader, True)
+            write_client_datasets(idx, writer, test_loader, False)
+            write_client_label_distribution(idx, writer, train_loader, args.num_classes)
+            local_clients.append(client)
+            bar.update(1)
 
     server = Server(
         args=args, global_model=global_model, clients=local_clients, writer=writer
