@@ -9,6 +9,7 @@ from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedgmm import FedGMMClient, FedGMMServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
+from algorithmn.fedmix1 import FedMix1Client, FedMix1Server
 from algorithmn.fedpac import FedPACClient, FedPACServer
 from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedsr import FedSRClient, FedSRServer
@@ -31,6 +32,7 @@ FL_CLIENT = {
     "FedSR": FedSRClient,
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
+    "FedMix1": FedMix1Client,
 }
 
 FL_SERVER = {
@@ -43,6 +45,7 @@ FL_SERVER = {
     "FedSR": FedSRServer,
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
+    "FedMix1": FedMix1Server,
 }
 
 if __name__ == "__main__":
@@ -126,9 +129,10 @@ if __name__ == "__main__":
                 writer=writer,
                 het_model=is_heterogeneous_client,
             )
-            write_client_datasets(idx, writer, train_loader, True, args.get_index)
-            write_client_datasets(idx, writer, test_loader, False, args.get_index)
-            if args.record_dist:
+
+            if args.record_client_data:
+                write_client_datasets(idx, writer, train_loader, True, args.get_index)
+                write_client_datasets(idx, writer, test_loader, False, args.get_index)
                 write_client_label_distribution(idx, writer, train_loader, args.num_classes, args.get_index)
             local_clients.append(client)
             bar.update(1)

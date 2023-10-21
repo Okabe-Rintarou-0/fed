@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
         "--lam", type=float, default=1.0, help="coefficient for reg term"
     )
     parser.add_argument(
-        "--record-dist", type=bool, default=True, help="Record label distribution"
+        "--record_client_data", action='store_true', help="Record label distribution"
     )
     parser.add_argument(
         "--device",
