@@ -28,7 +28,7 @@ class FedClientBase:
 
     @abstractmethod
     def label_distribution(self):
-        return calc_label_distribution(self.train_loader, self.args.num_classes)
+        return calc_label_distribution(self.train_loader, self.args.num_classes, self.args.get_index)
 
     @abstractmethod
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
