@@ -25,6 +25,7 @@ class PFedGraphServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.initial_global_parameters = global_model.state_dict()
+        self.aggregatable_weights = global_model.get_aggregatable_weights()
         num_clients = len(clients)
         self.adjacency_matrix = torch.ones((num_clients, num_clients)) / num_clients
 
@@ -78,11 +79,12 @@ class PFedGraphServer(FedServerBase):
             local_weights_map,
             agg_weights,
             self.args.alpha,
+            self.aggregatable_weights,
         )
 
         # aggregate personalized model
         agg_weights_map = aggregate_personalized_model(
-            idx_clients, local_weights_map, self.adjacency_matrix
+            idx_clients, local_weights_map, self.adjacency_matrix, self.aggregatable_weights
         )
 
         for idx in idx_clients:

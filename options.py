@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
         help="Use heterogeneous domain",
     )
     parser.add_argument(
-        "--model_het_percent", default=0.2, help="Heterogeneous model percent"
+        "--model_het_percent", type=float, default=0.2, help="Heterogeneous model percent"
     )
     parser.add_argument(
         "--prob", action="store_true", default=False, help="Use probabilistic model"
