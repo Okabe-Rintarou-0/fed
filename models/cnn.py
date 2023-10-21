@@ -106,7 +106,7 @@ class PACSCNN(SimpleCNN):
         z_dim=128,
     ):
         super().__init__(
-            num_classes, probabilistic, num_samples, model_het, z_dim, 64 * 27 * 27
+            num_classes, probabilistic, num_samples, model_het, z_dim, 64 * 7 * 7
         )
 
 
