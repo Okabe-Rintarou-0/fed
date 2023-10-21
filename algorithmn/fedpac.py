@@ -92,7 +92,8 @@ class FedPACServer(FedServerBase):
         global_protos = aggregate_protos(local_protos, label_sizes)
 
         for local_client in self.clients:
-            local_client.update_base_model(global_weight=global_weight)
+            if not self.args.model_het:
+                local_client.update_base_model(global_weight=global_weight)
             local_client.update_global_protos(global_protos=global_protos)
 
         avg_weights = get_head_agg_weight(m, Vars, Hs)
