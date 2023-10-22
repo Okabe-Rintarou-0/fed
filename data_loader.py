@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from datasets import PACS
 
-from models.cnn import CNN_FMNIST, PACSCNN, CifarCNN
-from models.resnet import CifarResnet
+from models.cnn import CNN_FMNIST, CifarCNN
+from models.resnet import CifarResNet, PACSResNet
 
 DATASET_PATH = "./data"
 
@@ -382,7 +382,7 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
 
 
 def get_model(args: Namespace) -> nn.Module:
-    dataset = args.dataset
+    dataset = args.dataset.lower()
     device = args.device
     num_classes = args.num_classes
     model_het = args.model_het
@@ -397,7 +397,7 @@ def get_model(args: Namespace) -> nn.Module:
         )
         args.lr = 0.02
     elif dataset in ["pacs"]:
-        global_model = PACSCNN(
+        global_model = PACSResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
@@ -421,7 +421,7 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     prob = args.prob
     z_dim = args.z_dim
     if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        heterogeneous_model = CifarResnet(
+        heterogeneous_model = CifarResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,

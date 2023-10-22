@@ -49,6 +49,12 @@ def parse_args() -> argparse.Namespace:
         help="Proximal term",
     )
     parser.add_argument(
+        "--distill_percent",
+        type=float,
+        default=0.2,
+        help="Percent of distilled clients",
+    ),
+    parser.add_argument(
         "--alpha",
         type=float,
         default=0.8,

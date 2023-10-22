@@ -1,7 +1,7 @@
 import torch
 from algorithmn.fedgmm import FedGMMClient
 from data_loader import get_dataloaders
-from models.cnn import PACSCNN, CifarCNN
+from models.cnn import PACSCNN, CifarCNN, ComplexCNN
 from models.resnet import CifarResnet
 from options import parse_args
 from torch import nn
@@ -36,8 +36,8 @@ if __name__ == "__main__":
     # print(y.size())
     # print(torch.sum(y, 1))
 
-    # resnet = CifarResnet(probabilistic=True)
+    cnn = ComplexCNN()
+    print(cnn(torch.zeros(3, 3, 32, 32)))
     # x, y = resnet(torch.zeros(3, 3, 32, 32))
     # print(y.size())
     # print(torch.sum(y, 1))
-    pass
