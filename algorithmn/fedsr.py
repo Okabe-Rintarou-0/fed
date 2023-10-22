@@ -23,8 +23,9 @@ class FedSRServer(FedServerBase):
         writer: SummaryWriter | None = None,
     ):
         super().__init__(args, global_model, clients, writer)
-        self.client_aggregatable_weights = global_model.get_aggregatable_weights()
         self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
+        self.global_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedSR Global Communication Round : {round} ----")
