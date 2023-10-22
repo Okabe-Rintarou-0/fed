@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 import os
 import random
+from typing import List
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -51,6 +52,31 @@ FL_SERVER = {
     "FedMix1": FedMix1Server,
 }
 
+
+def exists_weights(client_idx: int, dir: str):
+    weights_path = os.path.join(dir, f"client_{client_idx}.pth")
+    return os.path.exists(weights_path), weights_path
+
+
+def load_saved_dict(weights_dir: str, clients: List[FedClientBase]):
+    for client_idx, client in enumerate(clients):
+        exists, weights_path = exists_weights(client_idx=client_idx, dir=weights_dir)
+        if exists:
+            print(f'[client {client_idx}] loading saved dict...', end='')
+            client.local_model.load_state_dict(torch.load(weights_path))
+            print('done')
+
+
+def write_training_data(training_data, training_data_json):
+    with open(training_data_json, "w") as f:
+        f.write(json.dumps(training_data))
+
+
+def read_training_data(training_data_json):
+    with open(training_data_json, "r") as f:
+        return json.loads(f.read())
+
+
 if __name__ == "__main__":
     args = parse_args()
     train_loaders, test_loaders = get_dataloaders(args)
@@ -90,6 +116,13 @@ if __name__ == "__main__":
     if not os.path.exists(weights_dir):
         os.makedirs(weights_dir)
 
+    if os.path.exists(training_data_json):
+        training_data = read_training_data(training_data_json)
+        if 'round' in training_data:
+            last_round = int(training_data['round'])
+            print(f'detected last trained round: {last_round}, start training from this point')
+            args.start_round = last_round
+
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
 
@@ -110,8 +143,9 @@ if __name__ == "__main__":
         print("heterogeneous clients:", heterogeneous_clients)
 
     training_data = {"heterogeneous_clients": heterogeneous_clients}
-    with open(training_data_json, "w") as f:
-        f.write(json.dumps(training_data))
+    write_training_data(
+        training_data=training_data, training_data_json=training_data_json
+    )
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
@@ -136,15 +170,21 @@ if __name__ == "__main__":
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)
                 write_client_datasets(idx, writer, test_loader, False, args.get_index)
-                write_client_label_distribution(idx, writer, train_loader, args.num_classes, args.get_index)
+                write_client_label_distribution(
+                    idx, writer, train_loader, args.num_classes, args.get_index
+                )
             local_clients.append(client)
             bar.update(1)
+
+    load_saved_dict(weights_dir=weights_dir, clients=local_clients)
 
     server = Server(
         args=args, global_model=global_model, clients=local_clients, writer=writer
     )
 
-    for round in range(args.epochs):
+    start_round = args.start_round
+    end_round = args.epochs
+    for round in range(start_round, end_round):
         train_result = server.train_one_round(round)
         round_loss = train_result.loss_map["loss_avg"]
         local_acc1 = train_result.acc_map["acc_avg1"]
@@ -156,8 +196,12 @@ if __name__ == "__main__":
         local_accs2.append(local_acc2)
 
         # save client weights every 5 epochs
-        if round % 5 == 0:
+        if (round + 1) % 5 == 0:
             for idx in range(args.num_clients):
                 weights_path = os.path.join(weights_dir, f"client_{idx}.pth")
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
+                training_data["round"] = round
+                write_training_data(
+                    training_data=training_data, training_data_json=training_data_json
+                )

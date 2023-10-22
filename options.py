@@ -32,6 +32,9 @@ def parse_args() -> argparse.Namespace:
         "--record_client_data", action='store_true', help="Record label distribution"
     )
     parser.add_argument(
+        "--start_round", type=int, default=0
+    )
+    parser.add_argument(
         "--device",
         default="cpu",
         help="To use cuda, set to a specific GPU ID. Default set to use CPU.",
