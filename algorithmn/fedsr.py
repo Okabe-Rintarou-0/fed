@@ -136,7 +136,8 @@ class FedSRClient(FedClientBase):
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
 
-        self.local_model.to(self.device)
+        self.local_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.local_model = self.local_model.to(self.device)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")

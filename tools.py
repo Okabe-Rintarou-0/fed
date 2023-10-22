@@ -39,7 +39,7 @@ def aggregate_weights(
     for key in w_avg.keys():
         if aggregatable_weights is not None and key not in aggregatable_weights:
             continue
-        w_avg[key] = torch.zeros_like(w_avg[key])
+        w_avg[key] = torch.zeros_like(w_avg[key], dtype=float)
         for i in range(len(w)):
             w_avg[key] += agg_w[i] * w[i][key]
 
@@ -60,7 +60,7 @@ def aggregate_personalized_model(
         for key in model_i:
             if aggregatable_weights is not None and key not in aggregatable_weights:
                 continue
-            tmp_client_weights_map[client_idx][key] = torch.zeros_like(model_i[key])
+            tmp_client_weights_map[client_idx][key] = torch.zeros_like(model_i[key], dtype=float)
             for neighbor_idx in client_idxs:
                 neighbor_model = weights_map[neighbor_idx]
                 tmp_client_weights_map[client_idx][key] += (
