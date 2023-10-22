@@ -1,6 +1,5 @@
 from argparse import Namespace
 import copy
-import random
 from typing import List
 from tensorboardX import SummaryWriter
 import torch
@@ -9,6 +8,7 @@ from algorithmn.base import FedClientBase, FedServerBase
 import torch.nn.functional as F
 import numpy as np
 from torch import nn
+from torch import distributions
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
@@ -134,6 +134,7 @@ class FedSRPlusClient(FedClientBase):
         self.local_model.add_module("r", self.r)
         self.available_labels = list(range(args.num_classes))
         self.gen_batch_size = args.gen_batch_size
+        self.z_dim = args.z_dim
 
         # Set optimizer for the local updates
         self.optimizer = torch.optim.SGD(
@@ -183,18 +184,25 @@ class FedSRPlusClient(FedClientBase):
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
 
-
-                random_gen_samples = random.sample(
-                    self.available_labels,
-                    self.gen_batch_size
+                y_sampled = torch.tensor(
+                    np.random.choice(self.available_labels, self.gen_batch_size),
+                    device=self.device,
                 )
-                # for ()
+
+                r_sigma_softplus = F.softplus(self.r.sigma)
+                r_mu = self.r.mu[y_sampled]
+                r_sigma = r_sigma_softplus[y_sampled]
+                r_dist = distributions.Independent(
+                    distributions.normal.Normal(r_mu, r_sigma), 1
+                )
+                r = r_dist.rsample([1]).view([-1, self.z_dim])
+                z = r.to(self.device)
+                y_predicted = self.local_model.classifier(z)
+                loss += self.criterion(y_predicted, y_sampled)
 
                 loss.backward()
                 self.optimizer.step()
                 round_losses.append(loss.item())
-
-                
 
         acc2 = self.local_test()
 

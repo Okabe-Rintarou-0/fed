@@ -54,21 +54,47 @@ class ResNetBase(FedModel):
             z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #
-        y = self.fc2(z)
+        y = self.classifier(z)
         if self.probabilistic and return_dist:
             return z, y, (z_mu, z_sigma)
         return z, y
+
+    def classifier(self, z):
+        y = self.fc2(z)
+        return y
 
     def get_aggregatable_weights(self) -> List[str]:
         if not self.model_het:
             return self.all_keys
         # in this case, only classfier can be shared
         return self.classifier_weight_keys
-    
+
+
 class CifarResNet(ResNetBase):
-    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, backbone="resnet18", model_het=False, z_dim=128):
-        super().__init__(num_classes, probabilistic, num_samples, backbone, model_het, z_dim)
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        backbone="resnet18",
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
+        )
+
 
 class PACSResNet(ResNetBase):
-    def __init__(self, num_classes=10, probabilistic=False, num_samples=1, backbone="resnet18", model_het=False, z_dim=128):
-        super().__init__(num_classes, probabilistic, num_samples, backbone, model_het, z_dim)
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        backbone="resnet18",
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
+        )

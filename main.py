@@ -3,6 +3,8 @@ import json
 import os
 import random
 from typing import List
+
+from algorithmn.fedsrplus import FedSRPlusClient, FedSRPlusServer
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -36,6 +38,7 @@ FL_CLIENT = {
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
     "FedMix1": FedMix1Client,
+    "FedSR+": FedSRPlusClient,
 }
 
 FL_SERVER = {
@@ -50,6 +53,7 @@ FL_SERVER = {
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
     "FedMix1": FedMix1Server,
+    "FedSR+": FedSRPlusServer,
 }
 
 
@@ -63,11 +67,11 @@ def load_saved_dict(weights_dir: str, clients: List[FedClientBase]):
         exists, weights_path = exists_weights(client_idx=client_idx, dir=weights_dir)
         if exists:
             try:
-                print(f'[client {client_idx}] loading saved dict...', end='')
+                print(f"[client {client_idx}] loading saved dict...", end="")
                 client.local_model.load_state_dict(torch.load(weights_path))
-                print('done')
+                print("done")
             except Exception as e:
-                print(f'failed with {e}')
+                print(f"failed with {e}")
 
 
 def write_training_data(training_data, training_data_json):
@@ -121,9 +125,11 @@ if __name__ == "__main__":
 
     if os.path.exists(training_data_json):
         training_data = read_training_data(training_data_json)
-        if 'round' in training_data:
-            last_round = int(training_data['round'])
-            print(f'detected last trained round: {last_round}, start training from this point')
+        if "round" in training_data:
+            last_round = int(training_data["round"])
+            print(
+                f"detected last trained round: {last_round}, start training from this point"
+            )
             args.start_round = last_round
 
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:

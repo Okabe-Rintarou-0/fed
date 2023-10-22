@@ -67,16 +67,21 @@ class SimpleCNN(FedModel):
             z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #
-        y = self.fc2(z)
+        y = self.classifier(z)
         if self.probabilistic and return_dist:
             return z, y, (z_mu, z_sigma)
         return z, y
+    
+    def classifier(self, z):
+        y = self.fc2(z)
+        return y
 
     def get_aggregatable_weights(self) -> List[str]:
         if not self.model_het:
             return self.all_keys
         # in this case, only classfier can be shared
         return self.classifier_weight_keys
+
 
 class ComplexCNN(FedModel):
     def __init__(
@@ -143,16 +148,21 @@ class ComplexCNN(FedModel):
             z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
 
         # --------- Classifier --------- #
-        y = self.fc2(z)
+        y = self.classifier(z)
         if self.probabilistic and return_dist:
             return z, y, (z_mu, z_sigma)
         return z, y
+
+    def classifier(self, z):
+        y = self.fc2(z)
+        return y
 
     def get_aggregatable_weights(self) -> List[str]:
         if not self.model_het:
             return self.all_keys
         # in this case, only classfier can be shared
         return self.classifier_weight_keys
+
 
 class CifarCNN(SimpleCNN):
     def __init__(
