@@ -62,9 +62,12 @@ def load_saved_dict(weights_dir: str, clients: List[FedClientBase]):
     for client_idx, client in enumerate(clients):
         exists, weights_path = exists_weights(client_idx=client_idx, dir=weights_dir)
         if exists:
-            print(f'[client {client_idx}] loading saved dict...', end='')
-            client.local_model.load_state_dict(torch.load(weights_path))
-            print('done')
+            try:
+                print(f'[client {client_idx}] loading saved dict...', end='')
+                client.local_model.load_state_dict(torch.load(weights_path))
+                print('done')
+            except Exception as e:
+                print(f'failed with {e}')
 
 
 def write_training_data(training_data, training_data_json):
@@ -201,7 +204,9 @@ if __name__ == "__main__":
                 weights_path = os.path.join(weights_dir, f"client_{idx}.pth")
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
-                training_data["round"] = round
-                write_training_data(
-                    training_data=training_data, training_data_json=training_data_json
-                )
+            training_data["round"] = round
+            write_training_data(
+                training_data=training_data, training_data_json=training_data_json
+            )
+            weights_path = os.path.join(weights_dir, "global.pth")
+            torch.save(server.global_model.state_dict(), weights_path)

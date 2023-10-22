@@ -1,5 +1,6 @@
 from argparse import Namespace
 import copy
+import random
 from typing import List
 from tensorboardX import SummaryWriter
 import torch
@@ -24,7 +25,7 @@ class FedSRPlusServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
-        self.global_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.global_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
@@ -131,13 +132,15 @@ class FedSRPlusClient(FedClientBase):
         self.cmi_coeff = args.cmi_coeff
         self.r = Rzy(args.num_classes, args.z_dim)
         self.local_model.add_module("r", self.r)
+        self.available_labels = list(range(args.num_classes))
+        self.gen_batch_size = args.gen_batch_size
 
         # Set optimizer for the local updates
         self.optimizer = torch.optim.SGD(
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
 
-        self.local_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.local_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.local_model = self.local_model.to(self.device)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
@@ -180,9 +183,18 @@ class FedSRPlusClient(FedClientBase):
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
 
+
+                random_gen_samples = random.sample(
+                    self.available_labels,
+                    self.gen_batch_size
+                )
+                # for ()
+
                 loss.backward()
                 self.optimizer.step()
                 round_losses.append(loss.item())
+
+                
 
         acc2 = self.local_test()
 

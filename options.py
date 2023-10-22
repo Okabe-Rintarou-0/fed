@@ -56,7 +56,13 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.2,
         help="Percent of distilled clients",
-    ),
+    )
+    parser.add_argument(
+        "--gen_batch_size",
+        type=int,
+        default=32,
+        help="gen batch size",
+    )
     parser.add_argument(
         "--alpha",
         type=float,
