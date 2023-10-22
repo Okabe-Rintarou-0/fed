@@ -43,6 +43,12 @@ def parse_args() -> argparse.Namespace:
         help="The parameter for the dirichlet distribution for data partitioning",
     )
     parser.add_argument(
+        "--mu",
+        type=float,
+        default=0.01,
+        help="Proximal term",
+    )
+    parser.add_argument(
         "--alpha",
         type=float,
         default=0.8,

@@ -12,6 +12,7 @@ from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
 from algorithmn.fedmix1 import FedMix1Client, FedMix1Server
 from algorithmn.fedpac import FedPACClient, FedPACServer
 from algorithmn.fedper import FedPerClient, FedPerServer
+from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
@@ -25,6 +26,7 @@ from tools import write_client_datasets, write_client_label_distribution
 FL_CLIENT = {
     "FedStandAlone": FedStandAloneClient,
     "FedAvg": FedAvgClient,
+    "FedProx": FedProxClient,
     "Lg_FedAvg": LgFedAvgClient,
     "FedPer": FedPerClient,
     "FedL2Reg": FedL2RegClient,
@@ -38,6 +40,7 @@ FL_CLIENT = {
 FL_SERVER = {
     "FedStandAlone": FedStandAloneServer,
     "FedAvg": FedAvgServer,
+    "FedProx": FedProxServer,
     "Lg_FedAvg": LgFedAvgServer,
     "FedPer": FedPerServer,
     "FedL2Reg": FedL2RegServer,
