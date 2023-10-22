@@ -105,5 +105,6 @@ def parse_args() -> argparse.Namespace:
     if args.dataset == "pacs":
         args.domain_het = True
         args.iid = True
+        args.num_classes = 7
 
     return args
