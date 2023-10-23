@@ -23,6 +23,7 @@ class FedAvgServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.global_weight = self.global_model.state_dict()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedAvg Global Communication Round : {round} ----")
@@ -33,7 +34,7 @@ class FedAvgServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_model.state_dict()
+        global_weight = self.global_weight
         non_het_model_acc2s = []
         agg_weights = []
         local_weights = []
@@ -69,11 +70,9 @@ class FedAvgServer(FedServerBase):
             loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(
+        self.global_weight = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
-        # update global model
-        self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
         non_het_model_acc2_avg = sum(non_het_model_acc2s) / len(non_het_model_acc2s)
