@@ -62,13 +62,13 @@ def exists_weights(client_idx: int, dir: str):
     return os.path.exists(weights_path), weights_path
 
 
-def load_saved_dict(weights_dir: str, clients: List[FedClientBase]):
+def load_saved_dict(weights_dir: str, clients: List[FedClientBase], device: str):
     for client_idx, client in enumerate(clients):
         exists, weights_path = exists_weights(client_idx=client_idx, dir=weights_dir)
         if exists:
             try:
                 print(f"[client {client_idx}] loading saved dict...", end="")
-                client.local_model.load_state_dict(torch.load(weights_path))
+                client.local_model.load_state_dict(torch.load(weights_path, map_location=torch.device(device)))
                 print("done")
             except Exception as e:
                 print(f"failed with {e}")
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
+    print(tensorboard_path)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
@@ -186,7 +187,7 @@ if __name__ == "__main__":
             local_clients.append(client)
             bar.update(1)
 
-    load_saved_dict(weights_dir=weights_dir, clients=local_clients)
+    load_saved_dict(weights_dir=weights_dir, clients=local_clients, device=args.device)
 
     server = Server(
         args=args, global_model=global_model, clients=local_clients, writer=writer
