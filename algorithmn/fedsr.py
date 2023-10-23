@@ -24,7 +24,7 @@ class FedSRServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
-        self.global_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.global_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
@@ -120,9 +120,17 @@ class FedSRClient(FedClientBase):
         local_model: FedModel,
         writer: SummaryWriter | None = None,
         het_model=False,
+        teacher_model=None,
     ):
         super().__init__(
-            idx, args, train_loader, test_loader, local_model, writer, het_model
+            idx,
+            args,
+            train_loader,
+            test_loader,
+            local_model,
+            writer,
+            het_model,
+            teacher_model,
         )
         assert (
             args.prob
@@ -137,7 +145,7 @@ class FedSRClient(FedClientBase):
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
 
-        self.local_model.all_keys += ['r.C', 'r.sigma', 'r.mu']
+        self.local_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.local_model = self.local_model.to(self.device)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
@@ -198,5 +206,5 @@ class FedSRClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
+        self.clear_memory()
         return result

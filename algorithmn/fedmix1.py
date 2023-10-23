@@ -12,16 +12,20 @@ from torch.utils.data import DataLoader
 from algorithmn.base import FedClientBase, FedServerBase
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from tools import aggregate_weights, update_adjacency_matrix, aggregate_personalized_model
+from tools import (
+    aggregate_weights,
+    update_adjacency_matrix,
+    aggregate_personalized_model,
+)
 
 
 class FedMix1Server(FedServerBase):
     def __init__(
-            self,
-            args: Namespace,
-            global_model: FedModel,
-            clients: List[FedClientBase],
-            writer: SummaryWriter | None = None,
+        self,
+        args: Namespace,
+        global_model: FedModel,
+        clients: List[FedClientBase],
+        writer: SummaryWriter | None = None,
     ):
         super().__init__(args, global_model, clients, writer)
         self.aggregatable_weights = global_model.get_aggregatable_weights()
@@ -85,7 +89,10 @@ class FedMix1Server(FedServerBase):
 
         # aggregate personalized model
         agg_weights_map = aggregate_personalized_model(
-            idx_clients, local_weights_map, self.adjacency_matrix, self.aggregatable_weights
+            idx_clients,
+            local_weights_map,
+            self.adjacency_matrix,
+            self.aggregatable_weights,
         )
 
         for idx in idx_clients:
@@ -119,17 +126,25 @@ class Rzy(nn.Module):
 
 class FedMix1Client(FedClientBase):
     def __init__(
-            self,
-            idx: int,
-            args: Namespace,
-            train_loader: DataLoader,
-            test_loader: DataLoader,
-            local_model: FedModel,
-            writer: SummaryWriter | None = None,
-            het_model=False,
+        self,
+        idx: int,
+        args: Namespace,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        local_model: FedModel,
+        writer: SummaryWriter | None = None,
+        het_model=False,
+        teacher_model=None,
     ):
         super().__init__(
-            idx, args, train_loader, test_loader, local_model, writer, het_model
+            idx,
+            args,
+            train_loader,
+            test_loader,
+            local_model,
+            writer,
+            het_model,
+            teacher_model,
         )
         assert (
             args.prob
@@ -177,11 +192,11 @@ class FedMix1Client(FedClientBase):
                     z_mu_scaled = z_mu * self.r.C
                     z_sigma_scaled = z_sigma * self.r.C
                     reg_CMI = (
-                            torch.log(r_sigma)
-                            - torch.log(z_sigma_scaled)
-                            + (z_sigma_scaled ** 2 + (z_mu_scaled - r_mu) ** 2)
-                            / (2 * r_sigma ** 2)
-                            - 0.5
+                        torch.log(r_sigma)
+                        - torch.log(z_sigma_scaled)
+                        + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
+                        / (2 * r_sigma**2)
+                        - 0.5
                     )
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
@@ -204,5 +219,5 @@ class FedMix1Client(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
+        self.clear_memory()
         return result

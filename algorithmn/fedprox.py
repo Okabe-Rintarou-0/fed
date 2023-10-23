@@ -16,11 +16,11 @@ from tools import aggregate_weights, weight_flatten
 
 class FedProxServer(FedServerBase):
     def __init__(
-            self,
-            args: Namespace,
-            global_model: FedModel,
-            clients: List[FedClientBase],
-            writer: SummaryWriter | None = None,
+        self,
+        args: Namespace,
+        global_model: FedModel,
+        clients: List[FedClientBase],
+        writer: SummaryWriter | None = None,
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
@@ -102,17 +102,25 @@ class FedProxServer(FedServerBase):
 
 class FedProxClient(FedClientBase):
     def __init__(
-            self,
-            idx: int,
-            args: Namespace,
-            train_loader: DataLoader,
-            test_loader: DataLoader,
-            local_model: FedModel,
-            writer: SummaryWriter | None = None,
-            het_model=False,
+        self,
+        idx: int,
+        args: Namespace,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        local_model: FedModel,
+        writer: SummaryWriter | None = None,
+        het_model=False,
+        teacher_model=None,
     ):
         super().__init__(
-            idx, args, train_loader, test_loader, local_model, writer, het_model
+            idx,
+            args,
+            train_loader,
+            test_loader,
+            local_model,
+            writer,
+            het_model,
+            teacher_model,
         )
         self.mu = args.mu
         self.mse_loss = nn.MSELoss()
@@ -161,5 +169,5 @@ class FedProxClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
+        self.clear_memory()
         return result

@@ -20,7 +20,12 @@ from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
-from data_loader import get_dataloaders, get_heterogeneous_model, get_model
+from data_loader import (
+    get_dataloaders,
+    get_heterogeneous_model,
+    get_model,
+    get_teacher_model,
+)
 from options import parse_args
 from tensorboardX import SummaryWriter
 
@@ -68,7 +73,9 @@ def load_saved_dict(weights_dir: str, clients: List[FedClientBase], device: str)
         if exists:
             try:
                 print(f"[client {client_idx}] loading saved dict...", end="")
-                client.local_model.load_state_dict(torch.load(weights_path, map_location=torch.device(device)))
+                client.local_model.load_state_dict(
+                    torch.load(weights_path, map_location=torch.device(device))
+                )
                 print("done")
             except Exception as e:
                 print(f"failed with {e}")
@@ -86,7 +93,9 @@ def read_training_data(training_data_json):
 
 if __name__ == "__main__":
     args = parse_args()
-    train_loaders, test_loaders, train_client_idxs, test_client_idxs = get_dataloaders(args)
+    train_loaders, test_loaders, train_client_idxs, test_client_idxs = get_dataloaders(
+        args
+    )
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -95,6 +104,10 @@ if __name__ == "__main__":
     heterogeneous_model = None
     if args.model_het:
         heterogeneous_model = get_heterogeneous_model(args)
+
+    teacher_model = None
+    if args.distill:
+        teacher_model = get_teacher_model(args)
 
     # construct model
     global_model = get_model(args)
@@ -117,7 +130,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
-    
+
     training_data_dir = os.path.join(args.base_dir, "training_data", sub_dir_name)
     weights_dir = os.path.join(training_data_dir, "weights")
     training_data_json = os.path.join(training_data_dir, "data.json")
@@ -149,15 +162,24 @@ if __name__ == "__main__":
     local_clients = []
 
     heterogeneous_clients = []
+    distill_clients = []
     client_idxs = list(range(args.num_clients))
     if args.model_het:
         sample_size = int(args.model_het_percent * args.num_clients)
         heterogeneous_clients = random.sample(client_idxs, sample_size)
         print("heterogeneous clients:", heterogeneous_clients)
 
-    training_data = {"heterogeneous_clients": heterogeneous_clients}
-    training_data['train_client_idxs'] = train_client_idxs
-    training_data['test_client_idxs'] = test_client_idxs
+    if args.distill:
+        sample_size = int(args.distill_percent * args.num_clients)
+        distill_clients = random.sample(client_idxs, sample_size)
+        print("distill clients:", distill_clients)
+
+    training_data = {
+        "heterogeneous_clients": heterogeneous_clients,
+        "distill_clients": distill_clients,
+        "train_client_idxs": train_client_idxs,
+        "test_client_idxs": test_client_idxs,
+    }
     write_training_data(
         training_data=training_data, training_data_json=training_data_json
     )
@@ -165,10 +187,15 @@ if __name__ == "__main__":
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
             is_heterogeneous_client = idx in heterogeneous_clients
+            is_distill_client = idx in distill_clients
             if is_heterogeneous_client:
                 local_model = deepcopy(heterogeneous_model)
             else:
                 local_model = deepcopy(global_model)
+
+            this_teacher_model = None
+            if is_distill_client:
+                this_teacher_model = teacher_model
 
             train_loader = train_loaders[idx]
             test_loader = test_loaders[idx]
@@ -180,6 +207,7 @@ if __name__ == "__main__":
                 local_model=local_model,
                 writer=writer,
                 het_model=is_heterogeneous_client,
+                teacher_model=this_teacher_model,
             )
 
             if args.record_client_data:

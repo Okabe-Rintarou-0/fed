@@ -438,3 +438,22 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     else:
         raise NotImplementedError()
     return heterogeneous_model
+
+def get_teacher_model(args: Namespace) -> nn.Module:
+    dataset = args.dataset
+    device = args.device
+    num_classes = args.num_classes
+    model_het = args.model_het
+    prob = args.prob
+    z_dim = args.z_dim
+    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
+        heterogeneous_model = CifarResNet(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        ).to(device)
+        args.lr = 0.02
+    else:
+        raise NotImplementedError()
+    return heterogeneous_model

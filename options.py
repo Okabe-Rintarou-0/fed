@@ -58,6 +58,11 @@ def parse_args() -> argparse.Namespace:
         help="Percent of distilled clients",
     )
     parser.add_argument(
+        "--distill",
+        action='store_true',
+        help="Distill",
+    )
+    parser.add_argument(
         "--gen_batch_size",
         type=int,
         default=32,

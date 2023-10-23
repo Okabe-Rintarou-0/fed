@@ -113,9 +113,17 @@ class FedGMMClient(FedClientBase):
         local_model: FedModel,
         writer: SummaryWriter | None = None,
         het_model=False,
+        teacher_model=None,
     ):
         super().__init__(
-            idx, args, train_loader, test_loader, local_model, writer, het_model
+            idx,
+            args,
+            train_loader,
+            test_loader,
+            local_model,
+            writer,
+            het_model,
+            teacher_model,
         )
         self.M1 = args.m1
         z_dim = args.z_dim
@@ -166,13 +174,17 @@ class FedGMMClient(FedClientBase):
 
     def _gather(self) -> Tuple[torch.Tensor, torch.Tensor]:
         num = len(self.train_loader.dataset)
-        zs, losses = torch.zeros((num, self.z_dim)).to(self.device), torch.zeros(num).to(self.device)
+        zs, losses = torch.zeros((num, self.z_dim)).to(self.device), torch.zeros(
+            num
+        ).to(self.device)
         with torch.no_grad():
             for x, labels, index in self.train_loader:
                 x = x.to(self.device)
                 z, logits = self.local_model(x)
                 zs[index] = z.to(self.device)
-                losses[index] = self.criterion(logits.to(self.device), labels.to(self.device)).to(self.device)
+                losses[index] = self.criterion(
+                    logits.to(self.device), labels.to(self.device)
+                ).to(self.device)
         return zs, losses
 
     def init_gmm(self):
@@ -447,5 +459,5 @@ class FedGMMClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
+        self.clear_memory()
         return result

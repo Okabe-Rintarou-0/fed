@@ -14,7 +14,17 @@ from tools import calc_label_distribution
 
 class FedClientBase:
     @abstractmethod
-    def __init__(self, idx: int, args: Namespace, train_loader: DataLoader, test_loader: DataLoader, local_model: FedModel, writer: SummaryWriter | None, het_model: bool):
+    def __init__(
+        self,
+        idx: int,
+        args: Namespace,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        local_model: FedModel,
+        writer: SummaryWriter | None,
+        het_model: bool,
+        teacher_model: FedModel | None,
+    ):
         self.idx = idx
         self.args = args
         self.train_loader = train_loader
@@ -25,14 +35,23 @@ class FedClientBase:
         self.criterion = nn.CrossEntropyLoss()
         self.global_protos = None
         self.het_model = het_model
+        self.teacher_model = teacher_model
 
     @abstractmethod
     def label_distribution(self):
-        return calc_label_distribution(self.train_loader, self.args.num_classes, self.args.get_index)
+        return calc_label_distribution(
+            self.train_loader, self.args.num_classes, self.args.get_index
+        )
 
     @abstractmethod
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         pass
+
+    @abstractmethod
+    def clear_memory(self):
+        if self.device != 'cpu':
+            self.local_model = self.local_model.to(torch.device("cpu"))
+            torch.cuda.empty_cache()
 
     @abstractmethod
     def local_test(self) -> float:
@@ -47,7 +66,7 @@ class FedClientBase:
                 _, outputs = model(inputs)
                 _, predicted = torch.max(outputs.data, 1)
                 correct += (predicted == labels).sum().item()
-        acc = 100.0*correct/total
+        acc = 100.0 * correct / total
         return acc
 
     @abstractmethod
@@ -71,7 +90,13 @@ class FedClientBase:
 
 class FedServerBase:
     @abstractmethod
-    def __init__(self, args: Namespace, global_model: FedModel, clients: List[FedClientBase], writer: SummaryWriter | None):
+    def __init__(
+        self,
+        args: Namespace,
+        global_model: FedModel,
+        clients: List[FedClientBase],
+        writer: SummaryWriter | None,
+    ):
         self.args = args
         self.global_model = global_model
         self.clients = clients

@@ -104,9 +104,17 @@ class FedL2RegClient(FedClientBase):
         local_model: FedModel,
         writer: SummaryWriter | None = None,
         het_model=False,
+        teacher_model=None,
     ):
         super().__init__(
-            idx, args, train_loader, test_loader, local_model, writer, het_model
+            idx,
+            args,
+            train_loader,
+            test_loader,
+            local_model,
+            writer,
+            het_model,
+            teacher_model,
         )
         self.mse_loss = nn.MSELoss()
 
@@ -185,5 +193,5 @@ class FedL2RegClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
+        self.clear_memory()
         return result
