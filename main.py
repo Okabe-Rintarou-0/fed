@@ -86,7 +86,7 @@ def read_training_data(training_data_json):
 
 if __name__ == "__main__":
     args = parse_args()
-    train_loaders, test_loaders = get_dataloaders(args)
+    train_loaders, test_loaders, train_client_idxs, test_client_idxs = get_dataloaders(args)
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -114,7 +114,6 @@ if __name__ == "__main__":
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
-    print(tensorboard_path)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
@@ -154,6 +153,8 @@ if __name__ == "__main__":
         print("heterogeneous clients:", heterogeneous_clients)
 
     training_data = {"heterogeneous_clients": heterogeneous_clients}
+    training_data['train_client_idxs'] = train_client_idxs
+    training_data['test_client_idxs'] = test_client_idxs
     write_training_data(
         training_data=training_data, training_data_json=training_data_json
     )

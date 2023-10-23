@@ -48,7 +48,7 @@ def gen_data_loaders(
             dataset=splitted_dataset, batch_size=batch_size, shuffle=shuffle
         )
         dataloaders.append(dataloader)
-    return dataloaders
+    return dataloaders, client_idxs
 
 
 def mnist_iid(
@@ -57,7 +57,7 @@ def mnist_iid(
     batch_size: int,
     shuffle: bool,
     get_index: bool,
-) -> List[DataLoader]:
+) -> Tuple[List[DataLoader], List[List[int]]]:
     """
     Sample I.I.D. client data from MNIST dataset
     :param dataset: MNIST
@@ -294,6 +294,9 @@ def pacs(
     train_loaders, test_loaders = [None] * num_clients, []
     num_train_env = len(train_env)
 
+    train_client_idxs = [[] for _ in range(num_clients)]
+    test_client_idxs = [[] for _ in range(num_clients)]
+
     env_num_clients_map = {}
     for i in range(num_train_env):
         env_num_clients_map[i] = num_clients // num_train_env
@@ -315,6 +318,7 @@ def pacs(
                 np.random.choice(all_idxs, data_size_per_client, replace=False)
             )
             all_idxs = list(set(all_idxs) - select_set)
+            train_client_idxs[idx] = list(select_set)
             splitted_dataset = DatasetSplit(
                 dataset=train_dataset, index=list(select_set), get_index=get_index
             )
@@ -329,8 +333,9 @@ def pacs(
             dataset=test_dataset, batch_size=batch_size, shuffle=False
         )
         test_loaders.append(test_loader)
+        test_client_idxs[idx] = list(range(len(test_dataset)))
 
-    return train_loaders, test_loaders
+    return train_loaders, test_loaders, train_client_idxs, test_client_idxs
 
 
 # get_dataloaders returns train and test dataloader of given dataset
@@ -345,19 +350,19 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     if dataset == "mnist":
         trainset, testset = mnist_dataset()
         if iid:
-            train_loaders = mnist_iid(trainset, num_clients, local_bs, shuffle=True)
-            test_loaders = mnist_iid(testset, num_clients, local_bs, shuffle=False)
+            train_loaders, train_client_idxs = mnist_iid(trainset, num_clients, local_bs, shuffle=True)
+            test_loaders, test_client_idxs = mnist_iid(testset, num_clients, local_bs, shuffle=False)
     elif dataset in ["cifar10", "cifar"]:
         trainset, testset = cifar10_dataset()
         if iid:
-            train_loaders = cifar10_iid(
+            train_loaders, train_client_idxs = cifar10_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = cifar10_iid(
+            test_loaders, test_client_idxs = cifar10_iid(
                 testset, num_clients, local_bs, shuffle=False, get_index=get_index
             )
         else:
-            train_loaders = cifar10_noniid_dirichlet(
+            train_loaders, train_client_idxs = cifar10_noniid_dirichlet(
                 trainset,
                 num_clients,
                 args.beta,
@@ -365,7 +370,7 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = cifar10_noniid_dirichlet(
+            test_loaders, test_client_idxs = cifar10_noniid_dirichlet(
                 testset,
                 num_clients,
                 args.beta,
@@ -378,7 +383,7 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     else:
         raise NotImplementedError()
 
-    return train_loaders, test_loaders
+    return train_loaders, test_loaders, train_client_idxs, test_client_idxs
 
 
 def get_model(args: Namespace) -> nn.Module:
