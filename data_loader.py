@@ -310,6 +310,7 @@ def pacs(
 
         dataset_len = len(pacs_dataset[env])
         all_idxs = list(range(dataset_len))
+       
         env_num_clients = env_num_clients_map[i]
         data_size_per_client = dataset_len // env_num_clients
         for j in range(env_num_clients):
@@ -318,9 +319,10 @@ def pacs(
                 np.random.choice(all_idxs, data_size_per_client, replace=False)
             )
             all_idxs = list(set(all_idxs) - select_set)
-            train_client_idxs[idx] = list(select_set)
+            client_idxs = list(map(int, list(select_set)))
+            train_client_idxs[idx] = client_idxs
             splitted_dataset = DatasetSplit(
-                dataset=train_dataset, index=list(select_set), get_index=get_index
+                dataset=train_dataset, index=client_idxs, get_index=get_index
             )
             train_loaders[idx] = DataLoader(
                 dataset=splitted_dataset, batch_size=batch_size, shuffle=True

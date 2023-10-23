@@ -125,13 +125,16 @@ if __name__ == "__main__":
         os.makedirs(weights_dir)
 
     if os.path.exists(training_data_json):
-        training_data = read_training_data(training_data_json)
-        if "round" in training_data:
-            last_round = int(training_data["round"])
-            print(
-                f"detected last trained round: {last_round}, start training from this point"
-            )
-            args.start_round = last_round
+        try:
+            training_data = read_training_data(training_data_json)
+            if "round" in training_data:
+                last_round = int(training_data["round"])
+                print(
+                    f"detected last trained round: {last_round}, start training from this point"
+                )
+                args.start_round = last_round
+        except:
+            pass
 
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
