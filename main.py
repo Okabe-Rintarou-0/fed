@@ -113,11 +113,12 @@ if __name__ == "__main__":
 
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
 
-    tensorboard_path = os.path.join("./tensorboard", sub_dir_name)
+    tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
-    training_data_dir = os.path.join("./training_data", sub_dir_name)
+    
+    training_data_dir = os.path.join(args.base_dir, "training_data", sub_dir_name)
     weights_dir = os.path.join(training_data_dir, "weights")
     training_data_json = os.path.join(training_data_dir, "data.json")
     if not os.path.exists(weights_dir):

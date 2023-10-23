@@ -103,6 +103,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
+    parser.add_argument(
+        "--base_dir", type=str, default="./", help="Base directory"
+    )
     args = parser.parse_args()
 
     if args.train_rule == "FedGMM":
