@@ -3,6 +3,7 @@ import json
 import os
 import random
 from typing import List
+from algorithmn.feddistillavg import FedDistillAvgClient, FedDistillAvgServer
 
 from algorithmn.fedsrplus import FedSRPlusClient, FedSRPlusServer
 import numpy as np
@@ -20,6 +21,7 @@ from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
+from attack import manipulate_one_model
 from data_loader import (
     get_dataloaders,
     get_heterogeneous_model,
@@ -34,6 +36,7 @@ from tools import write_client_datasets, write_client_label_distribution
 FL_CLIENT = {
     "FedStandAlone": FedStandAloneClient,
     "FedAvg": FedAvgClient,
+    "FedDistillAvg": FedDistillAvgClient,
     "FedProx": FedProxClient,
     "Lg_FedAvg": LgFedAvgClient,
     "FedPer": FedPerClient,
@@ -49,6 +52,7 @@ FL_CLIENT = {
 FL_SERVER = {
     "FedStandAlone": FedStandAloneServer,
     "FedAvg": FedAvgServer,
+    "FedDistillAvg": FedDistillAvgServer,
     "FedProx": FedProxServer,
     "Lg_FedAvg": LgFedAvgServer,
     "FedPer": FedPerServer,
@@ -209,6 +213,8 @@ if __name__ == "__main__":
                 het_model=is_heterogeneous_client,
                 teacher_model=this_teacher_model,
             )
+
+            # manipulate_one_model(args, local_model, idx, global_model)
 
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)

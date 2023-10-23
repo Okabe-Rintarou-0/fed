@@ -459,5 +459,5 @@ class FedGMMClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-        self.clear_memory()
+
         return result

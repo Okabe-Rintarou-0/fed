@@ -150,7 +150,7 @@ class FedSRClient(FedClientBase):
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model
+        model = self.local_model.to(self.device)
         model.train()
         model.zero_grad()
         round_losses = []
@@ -206,5 +206,5 @@ class FedSRClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-        self.clear_memory()
+
         return result
