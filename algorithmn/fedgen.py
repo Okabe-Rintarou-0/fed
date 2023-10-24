@@ -223,7 +223,7 @@ class FedGenClient(FedClientBase):
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model
+        model = self.local_model.to(self.device)
         model.train()
         self.generator.eval()
         model.zero_grad()
@@ -257,7 +257,7 @@ class FedGenClient(FedClientBase):
                 
                 # compute teacher loss
                 sampled_y = np.random.choice(self.available_labels, self.gen_batch_size)
-                sampled_y = torch.tensor(sampled_y)
+                sampled_y = torch.tensor(sampled_y, device=self.device, dtype=torch.int64)
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
                 output = F.softmax(self.local_model.classifier(gen_output), dim=1)

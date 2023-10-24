@@ -310,7 +310,7 @@ def pacs(
 
         dataset_len = len(pacs_dataset[env])
         all_idxs = list(range(dataset_len))
-       
+
         env_num_clients = env_num_clients_map[i]
         data_size_per_client = dataset_len // env_num_clients
         for j in range(env_num_clients):
@@ -352,8 +352,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     if dataset == "mnist":
         trainset, testset = mnist_dataset()
         if iid:
-            train_loaders, train_client_idxs = mnist_iid(trainset, num_clients, local_bs, shuffle=True)
-            test_loaders, test_client_idxs = mnist_iid(testset, num_clients, local_bs, shuffle=False)
+            train_loaders, train_client_idxs = mnist_iid(
+                trainset, num_clients, local_bs, shuffle=True
+            )
+            test_loaders, test_client_idxs = mnist_iid(
+                testset, num_clients, local_bs, shuffle=False
+            )
     elif dataset in ["cifar10", "cifar"]:
         trainset, testset = cifar10_dataset()
         if iid:
@@ -386,6 +390,46 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
         raise NotImplementedError()
 
     return train_loaders, test_loaders, train_client_idxs, test_client_idxs
+
+
+def reload_dataloaders(
+    train_client_idxs: List[List[int]],
+    test_client_idxs: List[List[int]],
+    args: Namespace,
+):
+    dataset = args.dataset
+    num_clients = args.num_clients
+    get_index = args.get_index
+    local_bs = args.local_bs
+    if dataset == "pacs":
+        test_env = 0
+        pacs_dataset = PACS(root=DATASET_PATH, test_envs=[test_env], augment=False)
+        train_env = list(range(len(pacs_dataset.ENVIRONMENTS)))
+        train_env.remove(test_env)
+        train_loaders, test_loaders = [None] * num_clients, []
+
+        test_loader = DataLoader(
+            dataset=DatasetSplit(dataset=pacs_dataset[test_env], get_index=get_index),
+            shuffle=False,
+            batch_size=local_bs,
+        )
+
+        for idx, idxs in enumerate(train_client_idxs):
+            print(f"client {idx} reload data loaders...", end="")
+            train_env_idx = idx % len(train_env)
+            this_train_env = train_env[train_env_idx]
+            this_train_dataset = pacs_dataset[this_train_env]
+            train_loaders[idx] = DataLoader(
+                dataset=DatasetSplit(
+                    dataset=this_train_dataset, index=idxs, get_index=get_index
+                ),
+                batch_size=local_bs,
+                shuffle=True,
+            )
+            test_loaders.append(test_loader)
+            print("done")
+
+    return train_loaders, test_loaders
 
 
 def get_model(args: Namespace) -> nn.Module:
@@ -438,6 +482,7 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     else:
         raise NotImplementedError()
     return heterogeneous_model
+
 
 def get_teacher_model(args: Namespace) -> nn.Module:
     dataset = args.dataset

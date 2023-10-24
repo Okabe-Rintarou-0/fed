@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from models.generator import Generator, ProbGenerator
+from models.generator import ProbGenerator
 from tools import aggregate_weights
 
 
@@ -28,7 +28,7 @@ class FedSRGenServer(FedServerBase):
         self.global_weight = self.global_model.state_dict()
         self.generator = ProbGenerator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
-        )
+        ).to(args.device)
 
         for client in clients:
             client.generator = self.generator
@@ -221,7 +221,7 @@ class FedSRGenClient(FedClientBase):
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model
+        model = self.local_model.to(self.device)
         model.train()
         self.generator.eval()
         model.zero_grad()
@@ -272,7 +272,7 @@ class FedSRGenClient(FedClientBase):
 
                 # compute teacher loss
                 sampled_y = np.random.choice(self.available_labels, self.gen_batch_size)
-                sampled_y = torch.tensor(sampled_y, device=self.device)
+                sampled_y = torch.tensor(sampled_y, device=self.device, dtype=torch.int64)
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
                 output = F.softmax(self.local_model.classifier(gen_output), dim=1)

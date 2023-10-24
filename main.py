@@ -29,6 +29,7 @@ from data_loader import (
     get_heterogeneous_model,
     get_model,
     get_teacher_model,
+    reload_dataloaders,
 )
 from options import parse_args
 from tensorboardX import SummaryWriter
@@ -91,6 +92,23 @@ def load_saved_dict(weights_dir: str, clients: List[FedClientBase], device: str)
                 print(f"failed with {e}")
 
 
+def reload_saved_loaders(
+    train_client_idxs: List[List[int]],
+    test_client_idxs: List[List[int]],
+    clients: List[FedClientBase],
+    training_data: dict,
+    args,
+):
+    train_loaders, test_loaders = reload_dataloaders(
+        train_client_idxs, test_client_idxs, args
+    )
+    training_data["train_client_idxs"] = train_client_idxs
+    training_data["test_client_idxs"] = test_client_idxs
+    for idx, client in enumerate(clients):
+        client.train_loader = train_loaders[idx]
+        client.test_loader = test_loaders[idx]
+
+
 def write_training_data(training_data, training_data_json):
     with open(training_data_json, "w") as f:
         f.write(json.dumps(training_data))
@@ -148,18 +166,6 @@ if __name__ == "__main__":
     if not os.path.exists(weights_dir):
         os.makedirs(weights_dir)
 
-    if os.path.exists(training_data_json):
-        try:
-            training_data = read_training_data(training_data_json)
-            if "round" in training_data:
-                last_round = int(training_data["round"])
-                print(
-                    f"detected last trained round: {last_round}, start training from this point"
-                )
-                args.start_round = last_round
-        except:
-            pass
-
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
 
@@ -200,9 +206,6 @@ if __name__ == "__main__":
         "train_client_idxs": train_client_idxs,
         "test_client_idxs": test_client_idxs,
     }
-    write_training_data(
-        training_data=training_data, training_data_json=training_data_json
-    )
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
@@ -238,6 +241,24 @@ if __name__ == "__main__":
                 )
             local_clients.append(client)
             bar.update(1)
+
+    if os.path.exists(training_data_json):
+        try:
+            training_data = read_training_data(training_data_json)
+            if "round" in training_data:
+                last_round = int(training_data["round"])
+                print(
+                    f"detected last trained round: {last_round}, start training from this point"
+                )
+                args.start_round = last_round
+            if "client_idxs" in training_data:
+                reload_saved_loaders(training_data["client_idxs"], local_clients, args)
+        except:
+            pass
+
+    write_training_data(
+        training_data=training_data, training_data_json=training_data_json
+    )
 
     load_saved_dict(weights_dir=weights_dir, clients=local_clients, device=args.device)
 

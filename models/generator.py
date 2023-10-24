@@ -56,8 +56,10 @@ class Generator(nn.Module):
         :param verbose: also return the sampled Gaussian noise if verbose = True
         """
         batch_size = labels.shape[0]
-        eps = torch.rand((batch_size, self.noise_dim))  # sampling from Gaussian
-        y_input = torch.FloatTensor(batch_size, self.n_class)
+        eps = torch.rand(
+            (batch_size, self.noise_dim), device=labels.device
+        )  # sampling from Gaussian
+        y_input = torch.FloatTensor(batch_size, self.n_class).to(labels.devices)
         y_input.zero_()
         y_input.scatter_(1, labels.view(-1, 1), 1)
         z = torch.cat((eps, y_input), dim=1)
@@ -107,7 +109,7 @@ class ProbGenerator(nn.Module):
 
     def forward(self, labels):
         batch_size = labels.shape[0]
-        y_input = torch.FloatTensor(batch_size, self.n_class)
+        y_input = torch.FloatTensor(batch_size, self.n_class).to(labels.devices)
         y_input.zero_()
         y_input.scatter_(1, labels.view(-1, 1), 1)
         z = y_input
