@@ -73,23 +73,28 @@ FL_SERVER = {
 }
 
 
-def exists_weights(client_idx: int, dir: str):
-    weights_path = os.path.join(dir, f"client_{client_idx}.pth")
+def exists_weights(client_idx: int, dir: str, round: int):
+    weights_path = os.path.join(dir, f"client_{client_idx}_ckpt_{round}.pth")
     return os.path.exists(weights_path), weights_path
 
 
-def load_saved_dict(weights_dir: str, clients: List[FedClientBase], device: str):
+def load_saved_dict(
+    weights_dir: str, clients: List[FedClientBase], device: str, round: int
+):
     for client_idx, client in enumerate(clients):
-        exists, weights_path = exists_weights(client_idx=client_idx, dir=weights_dir)
-        if exists:
-            try:
-                print(f"[client {client_idx}] loading saved dict...", end="")
-                client.local_model.load_state_dict(
-                    torch.load(weights_path, map_location=torch.device(device))
-                )
-                print("done")
-            except Exception as e:
-                print(f"failed with {e}")
+        exists, weights_path = exists_weights(
+            client_idx=client_idx, dir=weights_dir, round=round
+        )
+        if not exists:
+            continue
+        try:
+            print(f"[client {client_idx}] loading saved dict...", end="")
+            client.local_model.load_state_dict(
+                torch.load(weights_path, map_location=torch.device(device))
+            )
+            print("done")
+        except Exception as e:
+            print(f"failed with {e}")
 
 
 def reload_saved_loaders(
@@ -271,7 +276,12 @@ if __name__ == "__main__":
         training_data=training_data, training_data_json=training_data_json
     )
 
-    load_saved_dict(weights_dir=weights_dir, clients=local_clients, device=args.device)
+    load_saved_dict(
+        weights_dir=weights_dir,
+        clients=local_clients,
+        device=args.device,
+        round=args.start_round,
+    )
 
     server = Server(
         args=args, global_model=global_model, clients=local_clients, writer=writer
@@ -293,12 +303,14 @@ if __name__ == "__main__":
         # save client weights every 5 epochs
         if (round + 1) % 5 == 0:
             for idx in range(args.num_clients):
-                weights_path = os.path.join(weights_dir, f"client_{idx}.pth")
+                weights_path = os.path.join(
+                    weights_dir, f"client_{idx}_ckpt_{round}.pth"
+                )
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
             training_data["round"] = round
             write_training_data(
                 training_data=training_data, training_data_json=training_data_json
             )
-            weights_path = os.path.join(weights_dir, "global.pth")
+            weights_path = os.path.join(weights_dir, f"global_ckpt_{round}.pth")
             torch.save(server.global_model.state_dict(), weights_path)
