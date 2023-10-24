@@ -87,7 +87,7 @@ class FedSRGenServer(FedServerBase):
                     client_output = F.softmax(output, dim=1)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
-                        * torch.tensor(weight, dtype=torch.float32)
+                        * torch.tensor(weight, dtype=torch.float32, device=self.device)
                     )
                     teacher_loss += teacher_loss_
                     teacher_logit += client_output * torch.tensor(
