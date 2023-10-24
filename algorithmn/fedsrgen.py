@@ -82,7 +82,9 @@ class FedSRGenServer(FedServerBase):
                     client.local_model.eval()
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
+                    client.local_model.to(self.device)
                     output = client.local_model.classifier(gen_output)
+                    client.clear_memory()
                     client_output = F.softmax(output, dim=1)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
