@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
             this_teacher_model = None
             if is_distill_client:
-                this_teacher_model = teacher_model
+                this_teacher_model = deepcopy(teacher_model)
 
             train_loader = train_loaders[idx]
             test_loader = test_loaders[idx]
