@@ -82,6 +82,9 @@ class PFedGraphServer(FedServerBase):
             self.aggregatable_weights,
         )
 
+        if self.args.attack:
+            self.do_attack()
+
         # aggregate personalized model
         agg_weights_map = aggregate_personalized_model(
             idx_clients,

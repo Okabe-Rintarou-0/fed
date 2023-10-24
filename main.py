@@ -22,7 +22,7 @@ from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
-from attack import manipulate_one_model
+
 from data_loader import (
     get_dataloaders,
     get_heterogeneous_model,
@@ -130,6 +130,8 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
+    if args.attack:
+        sub_dir_name = f"{sub_dir_name}_attack"
 
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
 
@@ -137,7 +139,6 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
-
     training_data_dir = os.path.join(args.base_dir, "training_data", sub_dir_name)
     weights_dir = os.path.join(training_data_dir, "weights")
     training_data_json = os.path.join(training_data_dir, "data.json")
@@ -170,6 +171,7 @@ if __name__ == "__main__":
 
     heterogeneous_clients = []
     distill_clients = []
+    attack_clients = []
     client_idxs = list(range(args.num_clients))
     if args.model_het:
         sample_size = int(args.model_het_percent * args.num_clients)
@@ -181,9 +183,17 @@ if __name__ == "__main__":
         distill_clients = random.sample(client_idxs, sample_size)
         print("distill clients:", distill_clients)
 
+    if args.attack:
+        sample_size = int(args.attack_percent * args.num_clients)
+        attack_clients = random.sample(client_idxs, sample_size)
+        args.attackers = attack_clients
+        print(f"attack clients: {attack_clients}, attack type: {args.attack_type}")
+
     training_data = {
         "heterogeneous_clients": heterogeneous_clients,
         "distill_clients": distill_clients,
+        "attack_clients": attack_clients,
+        "attack_type": args.attack_type,
         "train_client_idxs": train_client_idxs,
         "test_client_idxs": test_client_idxs,
     }
@@ -216,8 +226,6 @@ if __name__ == "__main__":
                 het_model=is_heterogeneous_client,
                 teacher_model=this_teacher_model,
             )
-
-            # manipulate_one_model(args, local_model, idx, global_model)
 
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)

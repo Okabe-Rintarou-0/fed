@@ -61,6 +61,8 @@ def parse_args() -> argparse.Namespace:
         default=0.4,
         help="Distill temperature",
     )
+    parser.add_argument("--attack", action="store_true")
+    parser.add_argument("--attack_percent", type=float, default=0.2)
     parser.add_argument("--attack_type", type=str, default="inv_grad")
     parser.add_argument(
         "--distill",
@@ -128,5 +130,8 @@ def parse_args() -> argparse.Namespace:
         args.domain_het = True
         args.iid = True
         args.num_classes = 7
+
+    if not args.attack:
+        args.attack_type = "none"
 
     return args

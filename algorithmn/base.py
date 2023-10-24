@@ -7,6 +7,7 @@ import torch
 from algorithmn.models import LocalTrainResult
 from torch.utils.data import DataLoader
 from torch import nn
+from attack import manipulate_one_model
 from models.base import FedModel
 
 from tools import calc_label_distribution
@@ -37,6 +38,8 @@ class FedClientBase:
         self.het_model = het_model
         self.teacher_model = teacher_model
 
+        self.attack = self.idx in args.attackers
+
     @abstractmethod
     def label_distribution(self):
         return calc_label_distribution(
@@ -49,7 +52,7 @@ class FedClientBase:
 
     @abstractmethod
     def clear_memory(self):
-        if self.device != 'cpu':
+        if self.device != "cpu":
             self.local_model = self.local_model.to(torch.device("cpu"))
             torch.cuda.empty_cache()
 
@@ -105,3 +108,11 @@ class FedServerBase:
     @abstractmethod
     def train_one_round(self, round: int):
         pass
+
+    @abstractmethod
+    def do_attack(self):
+        for client in self.clients:
+            if client.attack:
+                manipulate_one_model(
+                    self.args, client.local_model, client.idx, self.global_model
+                )

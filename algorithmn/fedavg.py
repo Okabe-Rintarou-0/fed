@@ -69,6 +69,9 @@ class FedAvgServer(FedServerBase):
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
 
+        if self.args.attack:
+            self.do_attack()
+
         # get global weights
         self.global_weight = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
