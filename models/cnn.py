@@ -71,7 +71,7 @@ class SimpleCNN(FedModel):
         if self.probabilistic and return_dist:
             return z, y, (z_mu, z_sigma)
         return z, y
-    
+
     def classifier(self, z):
         y = self.fc2(z)
         return y

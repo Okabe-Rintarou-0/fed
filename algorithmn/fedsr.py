@@ -1,6 +1,6 @@
 from argparse import Namespace
 import copy
-from typing import List
+from typing import Any, Dict, List
 from tensorboardX import SummaryWriter
 import torch
 from torch.utils.data import DataLoader
@@ -24,8 +24,8 @@ class FedSRServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
-        self.global_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.client_aggregatable_weights += ["r.C", "r.sigma", "r.mu"]
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedSR Global Communication Round : {round} ----")
@@ -138,15 +138,25 @@ class FedSRClient(FedClientBase):
         self.l2r_coeff = args.l2r_coeff
         self.cmi_coeff = args.cmi_coeff
         self.r = Rzy(args.num_classes, args.z_dim)
-        self.local_model.add_module("r", self.r)
+        self.can_agg_weights = self.local_model.get_aggregatable_weights() + [
+            "r.C",
+            "r.sigma",
+            "r.mu",
+        ]
 
+        self.local_model.add_module("r", self.r)
         # Set optimizer for the local updates
         self.optimizer = torch.optim.SGD(
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
-
-        self.local_model.all_keys += ["r.C", "r.sigma", "r.mu"]
         self.local_model = self.local_model.to(self.device)
+
+    def update_local_model(self, global_weight: Dict[str, Any]):
+        local_weight = self.local_model.state_dict()
+        for k in global_weight.keys():
+            if k in self.can_agg_weights:
+                local_weight[k] = global_weight[k]
+        self.local_model.load_state_dict(local_weight)
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
