@@ -169,7 +169,10 @@ class FedSRClient(FedClientBase):
 
         for _ in range(local_epoch):
             data_loader = iter(self.train_loader)
-            for _ in range(len(data_loader)):
+            iter_num = len(data_loader)
+            if self.args.iter_num > 0:
+                iter_num = min(iter_num, self.args.iter_num)
+            for _ in range(iter_num):
                 images, labels = next(data_loader)
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
