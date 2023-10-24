@@ -119,7 +119,7 @@ def parse_args() -> argparse.Namespace:
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
     parser.add_argument(
-        "--iter_num", type=int, default=5
+        "--iter_num", type=int, default=1
     )
     parser.add_argument("--base_dir", type=str, default="./", help="Base directory")
     args = parser.parse_args()
@@ -136,5 +136,5 @@ def parse_args() -> argparse.Namespace:
 
     if not args.attack:
         args.attack_type = "none"
-
+    args.attackers = []
     return args
