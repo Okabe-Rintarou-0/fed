@@ -81,6 +81,7 @@ class ProbGenerator(nn.Module):
         self.n_class = num_classes
         self.hidden_dim, self.input_channel = GENERATORCONFIGS[dataset]
         self.latent_dim = z_dim * 2
+        self.num_samples = 1
         self.z_dim = z_dim
         input_dim = self.n_class
         self.fc_configs = [input_dim, self.hidden_dim]
