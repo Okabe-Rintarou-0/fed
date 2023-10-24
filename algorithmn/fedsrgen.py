@@ -84,7 +84,6 @@ class FedSRGenServer(FedServerBase):
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     client.local_model.to(self.device)
                     output = client.local_model.classifier(gen_output)
-                    client.clear_memory()
                     client_output = F.softmax(output, dim=1)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
@@ -94,6 +93,7 @@ class FedSRGenServer(FedServerBase):
                     teacher_logit += client_output * torch.tensor(
                         expand_weight, dtype=torch.float32
                     )
+                    client.clear_memory()
                 ######### get student loss ############
                 # student_output = self.global_model.classifier(gen_output)
                 # student_loss = F.kl_div(
