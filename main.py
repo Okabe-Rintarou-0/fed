@@ -199,6 +199,7 @@ if __name__ == "__main__":
         print(f"attack clients: {attack_clients}, attack type: {args.attack_type}")
 
     training_data = {
+        "round": 0,
         "heterogeneous_clients": heterogeneous_clients,
         "distill_clients": distill_clients,
         "attack_clients": attack_clients,
@@ -251,6 +252,7 @@ if __name__ == "__main__":
                     f"detected last trained round: {last_round}, start training from this point"
                 )
                 args.start_round = last_round
+                training_data.round = last_round
             if (
                 "train_client_idxs" in training_data
                 and "test_client_idxs" in training_data
@@ -259,6 +261,7 @@ if __name__ == "__main__":
                     training_data["train_client_idxs"],
                     training_data["test_client_idxs"],
                     local_clients,
+                    training_data,
                     args,
                 )
         except:
