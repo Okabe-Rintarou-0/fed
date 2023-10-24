@@ -27,7 +27,7 @@ class FedDistillAvgServer(FedServerBase):
         self.global_weight = self.global_model.state_dict()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f"\n---- FedAvg Global Communication Round : {round} ----")
+        print(f"\n---- FedDistillAvg Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if round >= self.args.epochs:
@@ -121,11 +121,11 @@ class FedDistillAvgClient(FedClientBase):
             het_model,
             teacher_model,
         )
-        self.kl = torch.nn.KLDivLoss()
+        self.kl = torch.nn.KLDivLoss(reduction="batchmean")
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model.to(self.device)
+        model = self.local_model
         model.train()
         model.zero_grad()
         round_losses = []
@@ -137,7 +137,7 @@ class FedDistillAvgClient(FedClientBase):
         )
 
         if self.teacher_model is not None:
-            teacher_model = self.teacher_model.to(self.device)
+            teacher_model = self.teacher_model
             # update teacher weights
             with torch.no_grad():
                 teacher_weights = teacher_model.state_dict()
@@ -153,12 +153,13 @@ class FedDistillAvgClient(FedClientBase):
                 momentum=0.5,
                 weight_decay=0.0005,
             )
+            teacher_model.train()
             for _ in range(local_epoch):
                 for images, labels in self.train_loader:
                     teacher_model.zero_grad()
-                    teacher_model.train()
                     images, labels = images.to(self.device), labels.to(self.device)
                     _, output = teacher_model(images)
+                    output = F.softmax(output, dim=1)
                     loss = self.criterion(output, labels)
                     loss.backward()
                     teacher_optimizer.step()
@@ -177,7 +178,7 @@ class FedDistillAvgClient(FedClientBase):
                     lam = self.args.distill_lambda
                     output = F.softmax(output, dim=1)
                     loss0 = self.criterion(output, labels)
-                    loss1 = self.criterion(output, teacher_output)
+                    loss1 = self.kl(output, teacher_output)
                     loss = lam * loss0 + (1 - lam) * loss1
                 else:
                     loss = self.criterion(output, labels)
@@ -199,5 +200,5 @@ class FedDistillAvgClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-        self.clear_memory()
+
         return result
