@@ -4,6 +4,7 @@ import os
 import random
 from typing import List
 from algorithmn.feddistillavg import FedDistillAvgClient, FedDistillAvgServer
+from algorithmn.fedgen import FedGenClient, FedGenServer
 
 from algorithmn.fedsrplus import FedSRPlusClient, FedSRPlusServer
 import numpy as np
@@ -47,6 +48,7 @@ FL_CLIENT = {
     "FedGMM": FedGMMClient,
     "FedMix1": FedMix1Client,
     "FedSR+": FedSRPlusClient,
+    "FedGen": FedGenClient,
 }
 
 FL_SERVER = {
@@ -63,6 +65,7 @@ FL_SERVER = {
     "FedGMM": FedGMMServer,
     "FedMix1": FedMix1Server,
     "FedSR+": FedSRPlusServer,
+    "FedGen": FedGenServer,
 }
 
 

@@ -150,7 +150,7 @@ class FedSRClient(FedClientBase):
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model.to(self.device)
+        model = self.local_model
         model.train()
         model.zero_grad()
         round_losses = []
