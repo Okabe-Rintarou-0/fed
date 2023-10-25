@@ -195,6 +195,7 @@ class FedSRPlusClient(FedClientBase):
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
 
+                self.r.eval()
                 y_sampled = torch.tensor(
                     np.random.choice(self.available_labels, self.gen_batch_size),
                     device=self.device,
