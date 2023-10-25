@@ -88,7 +88,7 @@ class CifarResNet(ResNetBase):
 class PACSResNet(ResNetBase):
     def __init__(
         self,
-        num_classes=10,
+        num_classes=7,
         probabilistic=False,
         num_samples=1,
         backbone="resnet18",
