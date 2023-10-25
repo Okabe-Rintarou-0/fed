@@ -7,6 +7,7 @@ from datasets import PACS
 
 from models.resnet import PACSResNet
 from torch.utils.data import DataLoader
+from sklearn.decomposition import PCA
 
 import matplotlib.pyplot as plt
 
@@ -34,9 +35,11 @@ if __name__ == "__main__":
         state_dict.pop("r.C")
 
         model.load_state_dict(state_dict)
+        model.eval()
         dataset = PACS(root="./data", test_envs=[0])
         label_dist = {i: {"mu": [], "sigma": []} for i in range(7)}
 
+        pca = PCA(n_components=1) 
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
             dataloader = DataLoader(dataset=this_dataset, batch_size=batch_size)
@@ -48,8 +51,12 @@ if __name__ == "__main__":
                     p = predict[i].item()
                     z_mu *= r_C
                     z_sigma *= r_C
-                    label_dist[p]["mu"].extend(z_mu.mean(dim=1).tolist())
-                    label_dist[p]["sigma"].extend(z_sigma.mean(dim=1).tolist())
+                    z_mu_fit = pca.fit_transform(z_mu.detach().numpy())
+                    z_sigma_fit = pca.fit_transform(z_sigma.detach().numpy())
+                    label_dist[p]["mu"].extend(z_mu_fit)
+                    label_dist[p]["sigma"].extend(z_sigma_fit)
+                break
+            break
 
         classes = ["dog", "elephant", "giraffe", "guitar", "horse", "house", "person"]
         plt.xlabel("$\mu$")
@@ -59,8 +66,8 @@ if __name__ == "__main__":
             mus = np.array(dist["mu"])
             sigmas = np.array(dist["sigma"])
             total = len(mus)
-            if total > 100:
-                sampled = random.sample(list(range(total)), 100)
+            if total > 500:
+                sampled = random.sample(list(range(total)), 500)
             else:
                 sampled = list(range(total))
 
