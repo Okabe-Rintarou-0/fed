@@ -8,7 +8,7 @@ import torch
 import torchvision
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
-
+import torch.nn.functional as F
 from models import CifarCNN
 
 
@@ -26,15 +26,17 @@ def pairwise(data):
 
 
 def aggregate_weights(
-        w: List[Dict[str, Any]],
-        agg_weight: List[float],
-        aggregatable_weights: List[str] | None = None,
+    w: List[Dict[str, Any]],
+    agg_weight: List[float] | torch.Tensor,
+    aggregatable_weights: List[str] | None = None,
 ) -> Dict[str, Any]:
     """
     Returns the average of the weights.
     """
     w_avg = copy.deepcopy(w[0])
-    weight = torch.tensor(agg_weight)
+    if not isinstance(agg_weight, torch.Tensor):
+        weight = torch.tensor(agg_weight)
+    weight = agg_weight
     agg_w = weight / (weight.sum(dim=0))
     for key in w_avg.keys():
         if aggregatable_weights is not None and key not in aggregatable_weights:
@@ -47,10 +49,10 @@ def aggregate_weights(
 
 
 def aggregate_personalized_model(
-        client_idxs: List[int],
-        weights_map: Dict[int, Dict[str, Any]],
-        adjacency_matrix: torch.Tensor,
-        aggregatable_weights: List[str] | None = None
+    client_idxs: List[int],
+    weights_map: Dict[int, Dict[str, Any]],
+    adjacency_matrix: torch.Tensor,
+    aggregatable_weights: List[str] | None = None,
 ) -> Dict[int, Dict[str, Any]]:
     tmp_client_weights_map = {}
     for client_idx in client_idxs:
@@ -60,11 +62,13 @@ def aggregate_personalized_model(
         for key in model_i:
             if aggregatable_weights is not None and key not in aggregatable_weights:
                 continue
-            tmp_client_weights_map[client_idx][key] = torch.zeros_like(model_i[key], dtype=float)
+            tmp_client_weights_map[client_idx][key] = torch.zeros_like(
+                model_i[key], dtype=float
+            )
             for neighbor_idx in client_idxs:
                 neighbor_model = weights_map[neighbor_idx]
                 tmp_client_weights_map[client_idx][key] += (
-                        neighbor_model[key] * agg_vector[neighbor_idx]
+                    neighbor_model[key] * agg_vector[neighbor_idx]
                 )
 
     return tmp_client_weights_map
@@ -95,7 +99,11 @@ def aggregate_protos(local_protos_list, local_label_sizes_list):
 
 
 def write_client_datasets(
-        idx: int, writer: SummaryWriter, dataloader: DataLoader, train: bool, get_index: bool
+    idx: int,
+    writer: SummaryWriter,
+    dataloader: DataLoader,
+    train: bool,
+    get_index: bool,
 ):
     tag = f'client_{idx}_{"train" if train else "test"}_dataset'
     data_iter = iter(dataloader)
@@ -210,10 +218,16 @@ def get_head_agg_weight(num_users, Vars, Hs):
 
 
 def write_client_label_distribution(
-        idx: int, writer: SummaryWriter, train_loader: DataLoader, num_classes: int, get_index: bool
+    idx: int,
+    writer: SummaryWriter,
+    train_loader: DataLoader,
+    num_classes: int,
+    get_index: bool,
 ):
     # print(f"calculating client {idx}'s label distribution...", end='')
-    train_distribution = calc_label_distribution(train_loader, num_classes, get_index=get_index)
+    train_distribution = calc_label_distribution(
+        train_loader, num_classes, get_index=get_index
+    )
     labels = list(range(num_classes))
     plt.clf()
     plt.bar(labels, train_distribution)
@@ -260,10 +274,10 @@ def weight_flatten_fc(model: Dict[str, Any]):
 
 
 def cal_cosine_difference_matrix(
-        client_idxs: List[int],
-        initial_global_parameters: Dict[str, Any],
-        weights_map: Dict[int, Dict[str, Any]],
-        aggregatable_weights: List[str],
+    client_idxs: List[int],
+    initial_global_parameters: Dict[str, Any],
+    weights_map: Dict[int, Dict[str, Any]],
+    aggregatable_weights: List[str],
 ):
     num_clients = len(client_idxs)
     difference_matrix = torch.zeros((num_clients, num_clients))
@@ -291,12 +305,88 @@ def cal_cosine_difference_matrix(
     return difference_matrix
 
 
+def cal_dist_avg_difference_vector(
+    client_idxs: List[int],
+    weights_map: Dict[int, Dict[str, Any]],
+):
+    mus = []
+    sigmas = []
+    num_clients = len(client_idxs)
+    for client_idx in client_idxs:
+        this_weights = weights_map[client_idx]
+        this_mu = this_weights.get("r.mu")
+        this_sigma = this_weights.get("r.sigma")
+        mus.append(this_mu)
+        sigmas.append(this_sigma)
+
+    dist_avg_difference_vector = []
+    for i in range(num_clients):
+        mu1 = mus[i]
+        sigma1 = sigmas[i]
+        kl_div = 0
+        for j in range(num_clients):
+            if i == j:
+                continue
+            mu2 = mus[j]
+            sigma2 = sigmas[j]
+            this_kl_div = (
+                torch.log(sigma2 / sigma1)
+                + (sigma1**2 + (mu1 - mu2) ** 2) / (2 * sigma2**2)
+                - 0.5
+            )
+            kl_div += this_kl_div.mean()
+        dist_avg_difference_vector.append(kl_div)
+    dist_avg_difference_vector = torch.tensor(dist_avg_difference_vector, dtype=torch.float)
+    dist_avg_difference_vector /= (torch.max(dist_avg_difference_vector) + 1e-10)
+    return F.softmax(dist_avg_difference_vector, dim=0)
+
+
+def optimize_collaborate_vector(
+    difference_vector: torch.Tensor,
+    alpha: float,
+    agg_weights: List[float],
+):
+    n = difference_vector.shape[0]
+    p = np.array(agg_weights)
+    P = np.identity(n)
+    P = cp.atoms.affine.wraps.psd_wrap(P)
+    G = -np.identity(n)
+    h = np.zeros(n)
+    A = np.ones((1, n))
+    b = np.ones(1)
+
+    d = difference_vector.numpy()
+    q = alpha * d - 2 * p
+    x = cp.Variable(n)
+    prob = cp.Problem(
+        cp.Minimize(cp.quad_form(x, P) + q.T @ x), [G @ x <= h, A @ x == b]
+    )
+    prob.solve()
+    return torch.Tensor(x.value)
+
+
+def update_collaborate_vector(
+    client_idxs: List[int],
+    weights_map: Dict[int, Dict[str, Any]],
+    agg_weights: List[float],
+    alpha: float,
+):  
+    print('alpha', alpha)
+    print("old agg", agg_weights)
+    difference_vector = cal_dist_avg_difference_vector(client_idxs, weights_map)
+    collabrate_vector = optimize_collaborate_vector(
+        difference_vector, alpha, agg_weights
+    )
+    print("new agg", collabrate_vector)
+    return collabrate_vector
+
+
 def optimize_adjacency_matrix(
-        adjacency_matrix: torch.Tensor,
-        client_idxs: List[int],
-        difference_matrix: torch.Tensor,
-        alpha: float,
-        agg_weights: List[float],
+    adjacency_matrix: torch.Tensor,
+    client_idxs: List[int],
+    difference_matrix: torch.Tensor,
+    alpha: float,
+    agg_weights: List[float],
 ):
     n = difference_matrix.shape[0]
     p = np.array(agg_weights)
@@ -320,13 +410,13 @@ def optimize_adjacency_matrix(
 
 
 def update_adjacency_matrix(
-        adjacency_matrix: torch.Tensor,
-        client_idxs: List[int],
-        initial_global_parameters: Dict[str, Any],
-        weights_map: Dict[int, Dict[str, Any]],
-        agg_weights: List[float],
-        alpha: float,
-        aggregatable_weights: List[str],
+    adjacency_matrix: torch.Tensor,
+    client_idxs: List[int],
+    initial_global_parameters: Dict[str, Any],
+    weights_map: Dict[int, Dict[str, Any]],
+    agg_weights: List[float],
+    alpha: float,
+    aggregatable_weights: List[str],
 ):
     difference_matrix = cal_cosine_difference_matrix(
         client_idxs, initial_global_parameters, weights_map, aggregatable_weights
