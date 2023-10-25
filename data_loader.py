@@ -472,7 +472,7 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     prob = args.prob
     z_dim = args.z_dim
     if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        heterogeneous_model = CifarCNN2(
+        heterogeneous_model = CifarResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
