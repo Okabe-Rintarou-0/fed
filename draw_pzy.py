@@ -1,4 +1,6 @@
 import argparse
+import random
+import numpy as np
 
 import torch
 from datasets import PACS
@@ -54,8 +56,14 @@ if __name__ == "__main__":
         plt.ylabel("$\sigma$")
         for label in label_dist:
             dist = label_dist[label]
-            mus = dist['mu']
-            sigmas = dist['sigma']
-            plt.scatter(mus, sigmas, label=classes[label])
+            mus = np.array(dist["mu"])
+            sigmas = np.array(dist["sigma"])
+            total = len(mus)
+            if total > 100:
+                sampled = random.sample(list(range(total)), 100)
+            else:
+                sampled = list(range(total))
+
+            plt.scatter(mus[sampled], sigmas[sampled], label=classes[label], s=5)
         plt.legend()
-        plt.savefig('result.png')
+        plt.savefig("result.png")
