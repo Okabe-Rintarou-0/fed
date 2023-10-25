@@ -291,8 +291,8 @@ if __name__ == "__main__":
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
             training_data["round"] = round
-            write_training_data(
-                training_data=training_data, training_data_json=training_data_json
-            )
+            # write_training_data(
+            #     training_data=training_data, training_data_json=training_data_json
+            # )
             weights_path = os.path.join(weights_dir, f"global_ckpt_{round}.pth")
             torch.save(server.global_model.state_dict(), weights_path)
