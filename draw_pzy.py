@@ -1,14 +1,12 @@
 import argparse
-import random
-import numpy as np
 
-import torch
-from datasets import PACS
-
-from models.resnet import PACSResNet
-from torch.utils.data import DataLoader
-from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import torch
+from sklearn.decomposition import PCA
+from torch.utils.data import DataLoader
+
+from datasets import PACS
+from models.resnet import PACSResNet
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="pacs")
@@ -42,7 +40,10 @@ if __name__ == "__main__":
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
             dataloader = DataLoader(dataset=this_dataset, batch_size=batch_size)
+            enough = False
             for images, labels in dataloader:
+                if enough:
+                    break
                 images, labels = images.to(device), labels.to(device)
                 z, output, (z_mu, z_sigma) = model(images, return_dist=True)
                 predict = torch.argmax(output, dim=1)
@@ -51,6 +52,9 @@ if __name__ == "__main__":
                 for i in range(len(predict)):
                     p = predict[i].item()
                     label_dist[p]["z"].append(z[i].cpu().detach().tolist())
+                    if len(label_dist[p]["z"]) > 300:
+                        enough = True
+                        break
                     # this_z_mu = z_mu[i] * r_C
                     # this_z_sigma = z_sigma[i] * r_C
                     # label_dist[p]["mu"].append(this_z_mu.mean().item())
@@ -71,8 +75,6 @@ if __name__ == "__main__":
         # print(label_dist)
         plt.xlabel("$\mu$")
         plt.ylabel("$\sigma$")
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111, projection="3d")
 
         for label in label_dist:
             dist = label_dist[label]
@@ -80,15 +82,15 @@ if __name__ == "__main__":
             # sigmas = np.array(dist["sigma"])
 
             z = dist["z"]
-            pca = PCA(n_components=3)
-            print(pca.fit(z))
+            pca = PCA(n_components=2)
+            z = pca.fit_transform(z)
 
             # total = len(mus)
             # if total > 500:
             #     sampled = random.sample(list(range(total)), 500)
             # else:
             #     sampled = list(range(total))
-
-            # ax.scatter(z, label=classes[label], s=20)
-        ax.legend()
-        ax.savefig("result.png")
+            x_, y_ = z[:, 0], z[:, 1]
+            plt.scatter(x_, y_, label=classes[label], s=20)
+        plt.legend()
+        plt.savefig("result.png")
