@@ -300,7 +300,7 @@ def optimize_adjacency_matrix(
 ):
     n = difference_matrix.shape[0]
     p = np.array(agg_weights)
-    P = alpha * np.identity(n)
+    P = np.identity(n)
     P = cp.atoms.affine.wraps.psd_wrap(P)
     G = -np.identity(n)
     h = np.zeros(n)
@@ -309,7 +309,7 @@ def optimize_adjacency_matrix(
     for i in range(n):
         model_difference_vector = difference_matrix[i]
         d = model_difference_vector.numpy()
-        q = d - 2 * alpha * p
+        q = alpha * d - 2 * p
         x = cp.Variable(n)
         prob = cp.Problem(
             cp.Minimize(cp.quad_form(x, P) + q.T @ x), [G @ x <= h, A @ x == b]
