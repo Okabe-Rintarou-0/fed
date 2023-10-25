@@ -155,31 +155,12 @@ class FedSRPlusClient(FedClientBase):
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model.to(self.device)
+        model.train()
+        model.zero_grad()
         round_losses = []
         result = LocalTrainResult()
         acc1 = self.local_test()
 
-        for _ in range(5):
-            model.eval()
-            self.r.train()
-            y_sampled = torch.tensor(
-                np.random.choice(self.available_labels, self.gen_batch_size),
-                device=self.device,
-            )
-
-            r_sigma_softplus = F.softplus(self.r.sigma)
-            r_mu = self.r.mu[y_sampled]
-            r_sigma = r_sigma_softplus[y_sampled]
-            r_dist = distributions.Independent(
-                distributions.normal.Normal(r_mu, r_sigma), 1
-            )
-            r = r_dist.rsample([1]).view([-1, self.z_dim])
-            z = r.to(self.device)
-            y_predicted = self.local_model.classifier(z)
-            loss = self.criterion(y_predicted, y_sampled)
-            loss.backward()
-
-        model.train()
         for _ in range(local_epoch):
             data_loader = iter(self.train_loader)
             iter_num = len(data_loader)
@@ -214,6 +195,22 @@ class FedSRPlusClient(FedClientBase):
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
 
+                y_sampled = torch.tensor(
+                    np.random.choice(self.available_labels, self.gen_batch_size),
+                    device=self.device,
+                )
+
+                r_sigma_softplus = F.softplus(self.r.sigma)
+                r_mu = self.r.mu[y_sampled]
+                r_sigma = r_sigma_softplus[y_sampled]
+                r_dist = distributions.Independent(
+                    distributions.normal.Normal(r_mu, r_sigma), 1
+                )
+                r = r_dist.rsample([1]).view([-1, self.z_dim])
+                z = r.to(self.device)
+                y_predicted = self.local_model.classifier(z)
+                loss += self.criterion(y_predicted, y_sampled)
+
                 loss.backward()
                 self.optimizer.step()
                 round_losses.append(loss.item())
@@ -232,5 +229,6 @@ class FedSRPlusClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
+
         self.clear_memory()
         return result
