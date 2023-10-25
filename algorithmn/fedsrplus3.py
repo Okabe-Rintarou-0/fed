@@ -14,7 +14,7 @@ from models.base import FedModel
 from tools import aggregate_weights
 
 
-class FedSRServer(FedServerBase):
+class FedSRPlus3Server(FedServerBase):
     def __init__(
         self,
         args: Namespace,
@@ -23,9 +23,9 @@ class FedSRServer(FedServerBase):
         writer: SummaryWriter | None = None,
     ):
         super().__init__(args, global_model, clients, writer)
-        self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim))
+        self.global_model.add_module("r", Rzy(args.num_classes, args.z_dim, args.m1))
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
-        self.client_aggregatable_weights += ["r.C", "r.sigma", "r.mu"]
+        self.client_aggregatable_weights += ["r.C", "r.sigma", "r.mu", "r.pi"]
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedSR Global Communication Round : {round} ----")
@@ -103,14 +103,15 @@ class FedSRServer(FedServerBase):
 
 
 class Rzy(nn.Module):
-    def __init__(self, num_classes: int, z_dim: int):
+    def __init__(self, num_classes: int, z_dim: int, n_components: int):
         super().__init__()
-        self.mu = nn.Parameter(torch.zeros(num_classes, z_dim))
-        self.sigma = nn.Parameter(torch.ones(num_classes, z_dim))
+        self.mu = nn.Parameter(torch.zeros(num_classes, n_components, z_dim))
+        self.sigma = nn.Parameter(torch.ones(num_classes, n_components, z_dim))
         self.C = nn.Parameter(torch.ones([]))
+        self.pi = nn.Parameter(torch.ones(num_classes, n_components))
 
 
-class FedSRClient(FedClientBase):
+class FedSRPlus3Client(FedClientBase):
     def __init__(
         self,
         idx: int,
@@ -137,11 +138,12 @@ class FedSRClient(FedClientBase):
         ), "FedSR only support probabilistic model, please use '--prob' flag to start it."
         self.l2r_coeff = args.l2r_coeff
         self.cmi_coeff = args.cmi_coeff
-        self.r = Rzy(args.num_classes, args.z_dim)
+        self.r = Rzy(args.num_classes, args.z_dim, args.m1)
         self.can_agg_weights = self.local_model.get_aggregatable_weights() + [
             "r.C",
             "r.sigma",
             "r.mu",
+            "r.pi",
         ]
 
         self.local_model.add_module("r", self.r)
@@ -150,6 +152,7 @@ class FedSRClient(FedClientBase):
             local_model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
         self.local_model = self.local_model.to(self.device)
+        self.n_components = args.m1
 
     def update_local_model(self, global_weight: Dict[str, Any]):
         local_weight = self.local_model.state_dict()
@@ -187,20 +190,35 @@ class FedSRClient(FedClientBase):
 
                 if self.cmi_coeff != 0.0:
                     r_sigma_softplus = F.softplus(self.r.sigma)
-                    r_mu = self.r.mu[y]
-                    r_sigma = r_sigma_softplus[y]
+                    r_mus = self.r.mu[y]
+                    r_sigmas = r_sigma_softplus[y]
+                    r_pis = self.r.pi[y]
                     z_mu_scaled = z_mu * self.r.C
                     z_sigma_scaled = z_sigma * self.r.C
-                    reg_CMI = (
-                        torch.log(r_sigma)
-                        - torch.log(z_sigma_scaled)
-                        + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
-                        / (2 * r_sigma**2)
-                        - 0.5
-                    )
-                    reg_CMI = reg_CMI.sum(1).mean()
-                    loss += self.cmi_coeff * reg_CMI
+                    z_pi = 1 / self.n_components
+                    reg_CMI = 0
+                    item1 = 0
+                    item2 = 0
+                    for m1 in range(self.n_components):
+                        r_mu = r_mus[:, m1]
+                        r_sigma = r_sigmas[:, m1]
+                        r_pi = r_pis[:, m1]
+                        print(r_pi)
+                        item1 = z_pi * torch.log(z_pi / r_pi)
+                        item1 = item1.unsqueeze(1)
+                        item2 = z_pi * (
+                            torch.log(r_sigma)
+                            - torch.log(z_sigma_scaled)
+                            + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
+                            / (2 * r_sigma**2)
+                            - 0.5
+                        )
 
+                        this_reg_CMI = item1 + item2
+                        reg_CMI += this_reg_CMI.sum(1).mean()
+                        print(m1, item2)
+
+                loss += self.cmi_coeff * reg_CMI
                 loss.backward()
                 self.optimizer.step()
                 round_losses.append(loss.item())

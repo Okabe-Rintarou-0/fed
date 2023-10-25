@@ -36,7 +36,8 @@ def aggregate_weights(
     w_avg = copy.deepcopy(w[0])
     if not isinstance(agg_weight, torch.Tensor):
         weight = torch.tensor(agg_weight)
-    weight = agg_weight
+    else:
+        weight = agg_weight
     agg_w = weight / (weight.sum(dim=0))
     for key in w_avg.keys():
         if aggregatable_weights is not None and key not in aggregatable_weights:
