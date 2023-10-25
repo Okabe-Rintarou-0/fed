@@ -185,7 +185,7 @@ class CifarCNN(SimpleCNN):
         )
 
 
-class CifarCNN2(SimpleCNN):
+class CifarCNN2(ComplexCNN):
     def __init__(
         self,
         num_classes=10,
