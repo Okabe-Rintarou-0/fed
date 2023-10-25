@@ -216,9 +216,9 @@ if __name__ == "__main__":
         "test_client_idxs": test_client_idxs,
     }
 
-    write_training_data(
-        training_data=training_data, training_data_json=training_data_json
-    )
+    # write_training_data(
+    #     training_data=training_data, training_data_json=training_data_json
+    # )
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
