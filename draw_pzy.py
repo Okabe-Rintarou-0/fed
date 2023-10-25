@@ -35,11 +35,11 @@ if __name__ == "__main__":
         state_dict.pop("r.C")
 
         model.load_state_dict(state_dict)
-        model.eval()
         dataset = PACS(root="./data", test_envs=[0])
         label_dist = {i: {"mu": [], "sigma": []} for i in range(7)}
 
         pca = PCA(n_components=1) 
+        pca.fit_transform(data)
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
             dataloader = DataLoader(dataset=this_dataset, batch_size=batch_size)
@@ -51,10 +51,8 @@ if __name__ == "__main__":
                     p = predict[i].item()
                     z_mu *= r_C
                     z_sigma *= r_C
-                    z_mu_fit = pca.fit_transform(z_mu.detach().numpy())
-                    z_sigma_fit = pca.fit_transform(z_sigma.detach().numpy())
-                    label_dist[p]["mu"].extend(z_mu_fit)
-                    label_dist[p]["sigma"].extend(z_sigma_fit)
+                    label_dist[p]["mu"].extend(z_mu.mean(dim=1).tolist())
+                    label_dist[p]["sigma"].extend(z_sigma.mean(dim=1).tolist())
                 break
             break
 
@@ -71,6 +69,6 @@ if __name__ == "__main__":
             else:
                 sampled = list(range(total))
 
-            plt.scatter(mus[sampled], sigmas[sampled], label=classes[label], s=5)
+            plt.scatter(mus[sampled], sigmas[sampled], label=classes[label], s=20)
         plt.legend()
         plt.savefig("result.png")
