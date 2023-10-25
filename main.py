@@ -213,6 +213,10 @@ if __name__ == "__main__":
         "test_client_idxs": test_client_idxs,
     }
 
+    write_training_data(
+        training_data=training_data, training_data_json=training_data_json
+    )
+
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
             is_heterogeneous_client = idx in heterogeneous_clients
@@ -247,34 +251,6 @@ if __name__ == "__main__":
                 )
             local_clients.append(client)
             bar.update(1)
-
-    if os.path.exists(training_data_json):
-        try:
-            training_data = read_training_data(training_data_json)
-            if "round" in training_data:
-                last_round = int(training_data["round"])
-                print(
-                    f"detected last trained round: {last_round}, start training from this point"
-                )
-                args.start_round = last_round
-                training_data.round = last_round
-            if (
-                "train_client_idxs" in training_data
-                and "test_client_idxs" in training_data
-            ):
-                reload_saved_loaders(
-                    training_data["train_client_idxs"],
-                    training_data["test_client_idxs"],
-                    local_clients,
-                    training_data,
-                    args,
-                )
-        except:
-            pass
-
-    write_training_data(
-        training_data=training_data, training_data_json=training_data_json
-    )
 
     load_saved_dict(
         weights_dir=weights_dir,

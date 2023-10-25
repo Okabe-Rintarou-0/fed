@@ -28,7 +28,7 @@ class FedGenServer(FedServerBase):
         self.global_weight = self.global_model.state_dict()
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
-        )
+        ).to(self.device)
 
         for client in clients:
             client.generator = self.generator
@@ -84,14 +84,14 @@ class FedGenServer(FedServerBase):
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     output = client.local_model.classifier(gen_output)
-                    client_output = F.softmax(output, dim=1)
+                    client_output = F.softmax(output, dim=1).clone().detach()
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
-                        * torch.tensor(weight, dtype=torch.float32)
+                        * torch.tensor(weight, dtype=torch.float32, device=self.device)
                     )
                     teacher_loss += teacher_loss_
                     teacher_logit += client_output * torch.tensor(
-                        expand_weight, dtype=torch.float32
+                        expand_weight, dtype=torch.float32, device=self.device
                     )
                 ######### get student loss ############
                 # student_output = self.global_model.classifier(gen_output)
@@ -254,10 +254,12 @@ class FedGenClient(FedClientBase):
                 logit_given_gen = self.local_model.classifier(gen_output)
                 target_p = F.softmax(logit_given_gen, dim=1).clone().detach()
                 latent_loss = generative_beta * self.ensemble_loss(output, target_p)
-                
+
                 # compute teacher loss
                 sampled_y = np.random.choice(self.available_labels, self.gen_batch_size)
-                sampled_y = torch.tensor(sampled_y, device=self.device, dtype=torch.int64)
+                sampled_y = torch.tensor(
+                    sampled_y, device=self.device, dtype=torch.int64
+                )
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
                 output = F.softmax(self.local_model.classifier(gen_output), dim=1)

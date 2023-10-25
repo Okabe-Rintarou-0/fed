@@ -28,7 +28,7 @@ class Generator(nn.Module):
         self.build_network()
 
     def init_loss_fn(self):
-        self.crossentropy_loss = nn.NLLLoss(reduce=False)
+        self.crossentropy_loss = nn.CrossEntropyLoss(reduce=False)
         self.diversity_loss = DiversityLoss(metric="l1")
 
     def build_network(self):

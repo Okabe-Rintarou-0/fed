@@ -91,7 +91,7 @@ class FedSRGenServer(FedServerBase):
                     )
                     teacher_loss += teacher_loss_
                     teacher_logit += client_output * torch.tensor(
-                        expand_weight, dtype=torch.float32
+                        expand_weight, dtype=torch.float32, device=self.device
                     )
                     client.clear_memory()
                 ######### get student loss ############
@@ -274,7 +274,9 @@ class FedSRGenClient(FedClientBase):
 
                 # compute teacher loss
                 sampled_y = np.random.choice(self.available_labels, self.gen_batch_size)
-                sampled_y = torch.tensor(sampled_y, device=self.device, dtype=torch.int64)
+                sampled_y = torch.tensor(
+                    sampled_y, device=self.device, dtype=torch.int64
+                )
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
                 output = F.softmax(self.local_model.classifier(gen_output), dim=1)

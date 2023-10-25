@@ -74,6 +74,7 @@ class SimpleCNN(FedModel):
 
     def classifier(self, z):
         y = self.fc2(z)
+        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
@@ -155,6 +156,7 @@ class ComplexCNN(FedModel):
 
     def classifier(self, z):
         y = self.fc2(z)
+        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
@@ -180,6 +182,25 @@ class CifarCNN(SimpleCNN):
             model_het,
             z_dim,
             64 * 3 * 3,
+        )
+
+
+class CifarCNN2(SimpleCNN):
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes,
+            probabilistic,
+            num_samples,
+            model_het,
+            z_dim,
+            128 * 1 * 1,
         )
 
 
