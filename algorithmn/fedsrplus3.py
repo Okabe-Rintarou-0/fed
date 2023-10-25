@@ -203,20 +203,17 @@ class FedSRPlus3Client(FedClientBase):
                         r_mu = r_mus[:, m1]
                         r_sigma = r_sigmas[:, m1]
                         r_pi = r_pis[:, m1]
-                        print(r_pi)
+                        r_pi = F.softmax(r_pi, dim=0)
                         item1 = z_pi * torch.log(z_pi / r_pi)
-                        item1 = item1.unsqueeze(1)
                         item2 = z_pi * (
                             torch.log(r_sigma)
                             - torch.log(z_sigma_scaled)
                             + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
                             / (2 * r_sigma**2)
                             - 0.5
-                        )
-
+                        ).sum(1)
                         this_reg_CMI = item1 + item2
-                        reg_CMI += this_reg_CMI.sum(1).mean()
-                        print(m1, item2)
+                        reg_CMI += this_reg_CMI.mean()
 
                 loss += self.cmi_coeff * reg_CMI
                 loss.backward()
