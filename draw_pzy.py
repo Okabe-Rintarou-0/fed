@@ -38,7 +38,7 @@ if __name__ == "__main__":
         dataset = PACS(root="./data", test_envs=[0])
         label_dist = {i: {"mu": [], "sigma": []} for i in range(7)}
 
-        pca = PCA(n_components=1) 
+        pca = PCA(n_components=1)
         pca.fit_transform(data)
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
@@ -53,8 +53,6 @@ if __name__ == "__main__":
                     z_sigma *= r_C
                     label_dist[p]["mu"].extend(z_mu.mean(dim=1).tolist())
                     label_dist[p]["sigma"].extend(z_sigma.mean(dim=1).tolist())
-                break
-            break
 
         classes = ["dog", "elephant", "giraffe", "guitar", "horse", "house", "person"]
         plt.xlabel("$\mu$")
