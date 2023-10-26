@@ -26,10 +26,32 @@ parser.add_argument("--batch_size", default=32)
 parser.add_argument("--out", default="./out")
 args = parser.parse_args()
 
-label_dist = {}
+CONFIG_MAP = {
+    "pacs": {
+        "model": PACSResNet,
+        "model_args": {"probabilistic": True, "num_classes": 7},
+        "classes": ["dog", "elephant", "giraffe", "guitar", "horse", "house", "person"],
+    },
+    "cifar": {
+        "model": CifarCNN,
+        "model_args": {"probabilistic": True, "num_classes": 10},
+        "classes": [
+            "airplane",
+            "automobile",
+            "bird",
+            "cat",
+            "deer",
+            "dog",
+            "frog",
+            "horse",
+            "ship",
+            "truck",
+        ],
+    },
+}
 
 
-def collect_data(dataloader, model):
+def collect_data(dataloader, model, label_dist):
     for images, labels in dataloader:
         images, labels = images.to(device), labels.to(device)
         z, output, (z_mu, z_sigma) = model(images, return_dist=True)
@@ -48,66 +70,47 @@ if __name__ == "__main__":
 
     if not os.path.exists(out_path):
         os.mkdir(out_path)
+
+    ModelClass = CONFIG_MAP[dataset]["model"]
+    model_args = CONFIG_MAP[dataset]["model_args"]
+    classes = CONFIG_MAP[dataset]["classes"]
+    model = ModelClass(**model_args)
+
+    state_dict = torch.load(weights_path, map_location=device)
+    r_mus = state_dict["r.mu"].to(device)
+    r_sigmas = state_dict["r.sigma"].to(device)
+    r_C = state_dict["r.C"].to(device)
+
+    state_dict.pop("r.mu")
+    state_dict.pop("r.sigma")
+    state_dict.pop("r.C")
+    model.load_state_dict(state_dict)
+    label_dist = {
+        i: {"mu": [], "sigma": [], "z": [], "wrong_mu": [], "wrong_sigma": []}
+        for i in range(len(classes))
+    }
     pca = PCA(n_components=2)
     if dataset == "pacs":
-        model = PACSResNet(num_classes=7, probabilistic=True).to(device)
-        state_dict = torch.load(weights_path, map_location=device)
-        r_mus = state_dict["r.mu"].to(device)
-        r_sigmas = state_dict["r.sigma"].to(device)
-        r_C = state_dict["r.C"].to(device)
-
-        state_dict.pop("r.mu")
-        state_dict.pop("r.sigma")
-        state_dict.pop("r.C")
-        model.load_state_dict(state_dict)
-        dataset = PACS(root="./data", test_envs=[0])
-        label_dist = {i: {"mu": [], "sigma": [], "z": []} for i in range(7)}
-
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
             dataloader = DataLoader(dataset=this_dataset, batch_size=batch_size)
-            collect_data(dataloader, model)
-
-        classes = ["dog", "elephant", "giraffe", "guitar", "horse", "house", "person"]
-        # print(label_dist)
+            collect_data(dataloader, model, label_dist)
     elif dataset == "cifar":
-        model = CifarCNN(num_classes=10, probabilistic=True).to(device)
-        state_dict = torch.load(weights_path, map_location=device)
-        label_dist = {i: {"mu": [], "sigma": [], "z": []} for i in range(10)}
-        r_mus = state_dict["r.mu"].to(device)
-        r_sigmas = state_dict["r.sigma"].to(device)
-        r_C = state_dict["r.C"].to(device)
-
-        state_dict.pop("r.mu")
-        state_dict.pop("r.sigma")
-        state_dict.pop("r.C")
-        model.load_state_dict(state_dict)
-
-        classes = [
-            "airplane",
-            "automobile",
-            "bird",
-            "cat",
-            "deer",
-            "dog",
-            "frog",
-            "horse",
-            "ship",
-            "truck",
-        ]
-
         train_dataset, _ = cifar10_dataset()
         dataloader = DataLoader(dataset=train_dataset, batch_size=batch_size)
-        collect_data(dataloader, model)
+        collect_data(dataloader, model, label_dist)
+
+    zlist = []
+    labels_cnt = []
 
     for label in label_dist:
         dist = label_dist[label]
-        # mus = np.array(dist["mu"])
-        # sigmas = np.array(dist["sigma"])
         zs = np.array(dist["z"])
         if len(zs) == 0:
             print(label)
             continue
+        zlist.extend(zs.tolist())
+        labels_cnt.append(len(zs))
         zs = pca.fit_transform(zs)
         r_mu = r_mus[label].cpu().detach().numpy()
         r_sigma = r_sigmas[label].cpu().detach().numpy()
@@ -127,3 +130,20 @@ if __name__ == "__main__":
         cls = classes[label]
         plt.legend()
         plt.savefig(os.path.join(out_path, f"{cls}.png"))
+
+    zlist = np.array(zlist)
+    labels_cnt = np.array(labels_cnt)
+    zlist = pca.fit_transform(zlist)
+
+    start = 0
+    end = 0
+    plt.clf()
+    for label in range(len(labels_cnt)):
+        label_cnt = labels_cnt[label]
+        end = start + label_cnt
+        this_zs = zlist[start:end]
+        start = end
+
+        plt.scatter(this_zs[:, 0], this_zs[:, 1], alpha=0.2, label=classes[label], s=10)
+    plt.legend()
+    plt.savefig(os.path.join(out_path, f"dist.png"))

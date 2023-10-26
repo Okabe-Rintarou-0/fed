@@ -45,18 +45,25 @@ CONFIG_MAP = {
 }
 
 
-def collect_data(dataloader, model):
+def collect_data(dataloader, model, label_dist):
     for images, labels in dataloader:
         images, labels = images.to(device), labels.to(device)
         z, output, (z_mu, z_sigma) = model(images, return_dist=True)
         predict = torch.argmax(output, dim=1)
         for i in range(len(predict)):
             p = predict[i].item()
-            label_dist[p]["z"].append(z[i].cpu().detach().tolist())
+            label = labels[i].item()
             this_z_mu = z_mu[i] * r_C
             this_z_sigma = z_sigma[i] * r_C
-            label_dist[p]["mu"].append(this_z_mu.mean().item())
-            label_dist[p]["sigma"].append(this_z_sigma.mean().item())
+            if p == label:
+                mu_lst = label_dist[p]["mu"]
+                sigma_lst = label_dist[p]["sigma"]
+            else:
+                mu_lst = label_dist[p]["wrong_mu"]
+                sigma_lst = label_dist[p]["wrong_sigma"]
+
+            mu_lst.append(this_z_mu.mean().item())
+            sigma_lst.append(this_z_sigma.mean().item())
 
 
 if __name__ == "__main__":
@@ -83,29 +90,37 @@ if __name__ == "__main__":
     state_dict.pop("r.sigma")
     state_dict.pop("r.C")
     model.load_state_dict(state_dict)
-    label_dist = {i: {"mu": [], "sigma": [], "z": []} for i in range(len(classes))}
-    
+    label_dist = {
+        i: {"mu": [], "sigma": [], "z": [], "wrong_mu": [], "wrong_sigma": []}
+        for i in range(len(classes))
+    }
+
     if dataset == "pacs":
         dataset = PACS(root="./data", test_envs=[0])
         for env in range(len(dataset.ENVIRONMENTS)):
             this_dataset = dataset[env]
             dataloader = DataLoader(dataset=this_dataset, batch_size=batch_size)
-            collect_data(dataloader, model)
+            collect_data(dataloader, model, label_dist)
     elif dataset == "cifar":
         train_dataset, test_dataset = cifar10_dataset()
         train_dataloader = DataLoader(dataset=train_dataset, batch_size=batch_size)
         test_dataloader = DataLoader(dataset=test_dataset, batch_size=batch_size)
-        collect_data(train_dataloader, model)
-        collect_data(test_dataloader, model)
+        collect_data(train_dataloader, model, label_dist)
+        collect_data(test_dataloader, model, label_dist)
 
     for label in label_dist:
         dist = label_dist[label]
         mus = np.array(dist["mu"])
         sigmas = np.array(dist["sigma"])
+        wrong_mus = np.array(dist["wrong_mu"])
+        wrong_sigmas = np.array(dist["wrong_sigma"])
         r_mu = r_mus[label].mean().item()
         r_sigma = r_sigmas[label].mean().item()
         plt.clf()
         plt.scatter(mus, sigmas, label=classes[label], s=20)
+        plt.scatter(
+            wrong_mus, wrong_sigmas, label=f"{classes[label]}(wrongly predicted)", s=20
+        )
         plt.axhline(y=r_sigma, linestyle="--", label="$r_\mu$")
         plt.axvline(x=r_mu, linestyle="--", label="$r_\sigma$")
         plt.xlabel("$\mu$")
