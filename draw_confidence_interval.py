@@ -106,8 +106,8 @@ if __name__ == "__main__":
             # sigmas = np.array(dist["sigma"])
             zs = np.array(label_dist[p]["z"])
             zs = pca.fit_transform(zs)
-            r_mu = r_mus[label]
-            r_sigma = r_sigmas[label]
+            r_mu = r_mus[label].cpu().detach().numpy()
+            r_sigma = r_sigmas[label].cpu().detach().numpy()
             samples = np.random.multivariate_normal(r_mu, np.diag(r_sigma), 1000)
             samples = pca.fit_transform(samples)
             r_mu = np.mean(samples, axis=0)
