@@ -170,6 +170,33 @@ class FedSRPlus4Client(FedClientBase):
             if self.args.iter_num > 0:
                 iter_num = min(iter_num, self.args.iter_num)
             for _ in range(iter_num):
+                y_sampled = torch.tensor(
+                    np.random.choice(self.available_labels, self.gen_batch_size),
+                    device=self.device,
+                )
+
+                label_weight = self.label_weight[y_sampled].view([1, -1])
+
+                r_sigma_softplus = F.softplus(self.r.sigma)
+                r_mu = self.r.mu[y_sampled].clone().detach()
+                r_sigma = r_sigma_softplus[y_sampled].clone().detach()
+                r_dist = distributions.Independent(
+                    distributions.normal.Normal(r_mu, r_sigma), 1
+                )
+                r = r_dist.rsample([1]).view([-1, self.z_dim])
+                z = r.to(self.device)
+                y_predicted = self.local_model.classifier(z)
+                this_loss = self.ce(y_predicted, y_sampled).unsqueeze(-1)
+                loss = (label_weight @ this_loss).squeeze() / self.gen_batch_size
+                loss.backward()
+                self.optimizer.step()
+
+        for _ in range(local_epoch):
+            data_loader = iter(self.train_loader)
+            iter_num = len(data_loader)
+            if self.args.iter_num > 0:
+                iter_num = min(iter_num, self.args.iter_num)
+            for _ in range(iter_num):
                 images, labels = next(data_loader)
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
@@ -198,25 +225,6 @@ class FedSRPlus4Client(FedClientBase):
                     reg_CMI = reg_CMI.sum(1).mean()
                     loss += self.cmi_coeff * reg_CMI
 
-                y_sampled = torch.tensor(
-                    np.random.choice(self.available_labels, self.gen_batch_size),
-                    device=self.device,
-                )
-
-                label_weight = self.label_weight[y_sampled].view([1, -1])
-
-                r_sigma_softplus = F.softplus(self.r.sigma)
-                r_mu = self.r.mu[y_sampled].clone().detach()
-                r_sigma = r_sigma_softplus[y_sampled].clone().detach()
-                r_dist = distributions.Independent(
-                    distributions.normal.Normal(r_mu, r_sigma), 1
-                )
-                r = r_dist.rsample([1]).view([-1, self.z_dim])
-                z = r.to(self.device)
-                y_predicted = self.local_model.classifier(z)
-                this_loss = self.ce(y_predicted, y_sampled).unsqueeze(-1)
-
-                loss += (label_weight @ this_loss).squeeze()
                 loss.backward()
                 self.optimizer.step()
                 round_losses.append(loss.item())

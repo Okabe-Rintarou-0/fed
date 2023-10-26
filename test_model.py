@@ -7,7 +7,7 @@ from models.generator import Generator
 from options import parse_args
 from torch import nn
 
-from tools import cal_dist_avg_difference_vector, optimize_collabrate_vector
+from tools import cal_dist_avg_difference_vector, optimize_collaborate_vector
 
 
 class TestModule(nn.Module):
@@ -23,25 +23,12 @@ if __name__ == "__main__":
     # print(y.size())
     # print(torch.sum(y, 1))
 
-    mu1 = torch.rand((10, 128))
-    sigma1 = torch.rand((10, 128))
-
-    d1 = {
-        'r.mu': mu1,
-        'r.sigma': sigma1
-    }
-
-    mu2 = torch.rand((10, 128))
-    sigma2 = torch.rand((10, 128))
-
-    d2 = {
-        'r.mu': mu2,
-        'r.sigma': sigma2
-    }
-
     wm = {
-        0: d1,
-        1: d2
+        i: {
+            "r.mu": torch.rand(10, 128),
+            "r.sigma": torch.rand(10, 128) * (i**2 + 1),
+        }
+        for i in range(20)
     }
 
     seed = 520
@@ -49,12 +36,9 @@ if __name__ == "__main__":
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
-    print(d1)
-    print(d2)
-    client_idxs = [0, 1]
+    client_idxs = list(range(20))
 
     dv = cal_dist_avg_difference_vector(client_idxs, wm)
-    print('dv', dv)
-    cv = torch.rand((2,))
-    optimize_collabrate_vector(cv, client_idxs, dv, 0.1, [0.5, 0.5])
-    print('cv', cv)
+    print("dv", dv)
+    cv = optimize_collaborate_vector(dv, 0.8, [0.1 for _ in range(20)])
+    print("cv", cv)
