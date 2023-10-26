@@ -1,3 +1,4 @@
+from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import chi2
@@ -13,6 +14,7 @@ from torch.utils.data import DataLoader
 
 from datasets import PACS
 from models.resnet import PACSResNet
+from scipy.stats import norm, multivariate_normal
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="pacs")
@@ -21,41 +23,6 @@ parser.add_argument("--device", default="cpu")
 parser.add_argument("--batch_size", default=32)
 parser.add_argument("--out", default="./out")
 args = parser.parse_args()
-
-
-def confidence_ellipse(mu, cov, confidence=0.8, n_std=3.0, facecolor="none", **kwargs):
-    """
-    Create a confidence ellipse for a given mean and covariance matrix.
-
-    Parameters:
-        mu (array-like): Mean of the distribution.
-        cov (array-like): Covariance matrix of the distribution.
-        confidence (float): Confidence level of the ellipse. Default is 0.8.
-        n_std (float): The number of standard deviations to determine the size of the ellipse. Default is 3.0.
-        facecolor (str): Color of the ellipse. Default is 'none'.
-        **kwargs: Additional arguments to be passed to the Ellipse object.
-
-    Returns:
-        Ellipse: Ellipse object representing the confidence ellipse.
-    """
-    dof = mu.shape[0]  # Degrees of freedom (number of dimensions)
-    eigenvalues, eigenvectors = np.linalg.eigh(cov)
-    order = eigenvalues.argsort()[::-1]
-    eigenvalues, eigenvectors = eigenvalues[order], eigenvectors[:, order]
-
-    chi2_val = chi2.ppf(confidence, df=dof)
-    width, height = 2 * np.sqrt(chi2_val) * np.sqrt(eigenvalues)
-    angle = np.arctan2(*eigenvectors[:, 0][::-1])
-
-    ellipse = plt.matplotlib.patches.Ellipse(
-        xy=mu,
-        width=width * n_std,
-        height=height * n_std,
-        angle=np.degrees(angle),
-        facecolor=facecolor,
-        **kwargs,
-    )
-    return ellipse
 
 
 if __name__ == "__main__":
@@ -112,16 +79,7 @@ if __name__ == "__main__":
             samples = pca.fit_transform(samples)
             r_mu = np.mean(samples, axis=0)
             r_sigma = np.cov(samples, rowvar=False)
-
             plt.clf()
-            # Plot the 80% confidence interval ellipse
-            ellipse = confidence_ellipse(
-                r_mu,
-                r_sigma,
-                confidence=0.8,
-                edgecolor="lightcoral",
-                label="80% Confidence Interval",
-            )
             plt.scatter(
                 samples[:, 0],
                 samples[:, 1],
@@ -130,7 +88,6 @@ if __name__ == "__main__":
                 s=10,
             )
             plt.scatter(zs[:, 0], zs[:, 1], alpha=0.5, label="Samples of $p(z|y)$")
-            plt.gca().add_patch(ellipse)
             # plt.xlabel("$\mu$")
             # plt.ylabel("$\sigma$")
             cls = classes[label]
