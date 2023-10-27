@@ -135,9 +135,7 @@ def read_training_data(training_data_json):
 
 if __name__ == "__main__":
     args = parse_args()
-    train_loaders, test_loaders, train_client_idxs, test_client_idxs = get_dataloaders(
-        args
-    )
+    train_loaders, test_loaders = get_dataloaders(args)
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -169,7 +167,7 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_attack"
 
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
-
+    print(sub_dir_name)
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)
 

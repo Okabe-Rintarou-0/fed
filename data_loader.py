@@ -337,7 +337,7 @@ def pacs(
         test_loaders.append(test_loader)
         test_client_idxs[idx] = list(range(len(test_dataset)))
 
-    return train_loaders, test_loaders, train_client_idxs, test_client_idxs
+    return train_loaders, test_loaders
 
 
 # get_dataloaders returns train and test dataloader of given dataset
@@ -389,7 +389,7 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     else:
         raise NotImplementedError()
 
-    return train_loaders, test_loaders, train_client_idxs, test_client_idxs
+    return train_loaders, test_loaders
 
 
 def reload_dataloaders(

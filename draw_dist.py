@@ -58,7 +58,11 @@ def collect_data(dataloader, model, label_dist):
         predict = torch.argmax(output, dim=1)
         for i in range(len(predict)):
             p = predict[i].item()
-            label_dist[p]["z"].append(z[i].cpu().detach().tolist())
+            label = labels[i].item()
+            if p == label:
+                label_dist[p]["z"].append(z[i].cpu().detach().tolist())
+            else:
+                label_dist[p]["wrong_z"].append(z[i].cpu().detach().tolist())
 
 
 if __name__ == "__main__":
@@ -74,7 +78,7 @@ if __name__ == "__main__":
     ModelClass = CONFIG_MAP[dataset]["model"]
     model_args = CONFIG_MAP[dataset]["model_args"]
     classes = CONFIG_MAP[dataset]["classes"]
-    model = ModelClass(**model_args)
+    model = ModelClass(**model_args).to(device)
 
     state_dict = torch.load(weights_path, map_location=device)
     r_mus = state_dict["r.mu"].to(device)
@@ -86,7 +90,14 @@ if __name__ == "__main__":
     state_dict.pop("r.C")
     model.load_state_dict(state_dict)
     label_dist = {
-        i: {"mu": [], "sigma": [], "z": [], "wrong_mu": [], "wrong_sigma": []}
+        i: {
+            "mu": [],
+            "sigma": [],
+            "z": [],
+            "wrong_mu": [],
+            "wrong_sigma": [],
+            "wrong_z": [],
+        }
         for i in range(len(classes))
     }
     pca = PCA(n_components=2)
@@ -106,6 +117,7 @@ if __name__ == "__main__":
     for label in label_dist:
         dist = label_dist[label]
         zs = np.array(dist["z"])
+        wrong_zs = np.array(dist["wrong_z"])
         if len(zs) == 0:
             print(label)
             continue

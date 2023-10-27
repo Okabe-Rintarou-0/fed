@@ -203,7 +203,6 @@ class FedSRPlus3Client(FedClientBase):
                         r_mu = r_mus[:, m1]
                         r_sigma = r_sigmas[:, m1]
                         r_pi = r_pis[:, m1]
-                        r_pi = F.softmax(r_pi, dim=0)
                         item1 = z_pi * torch.log(z_pi / r_pi)
                         item2 = z_pi * (
                             torch.log(r_sigma)

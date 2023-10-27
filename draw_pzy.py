@@ -79,7 +79,7 @@ if __name__ == "__main__":
     ModelClass = CONFIG_MAP[dataset]["model"]
     model_args = CONFIG_MAP[dataset]["model_args"]
     classes = CONFIG_MAP[dataset]["classes"]
-    model = ModelClass(**model_args)
+    model = ModelClass(**model_args).to(device)
 
     state_dict = torch.load(weights_path, map_location=device)
     r_mus = state_dict["r.mu"].to(device)
