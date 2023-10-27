@@ -32,7 +32,6 @@ from data_loader import (
     get_heterogeneous_model,
     get_model,
     get_teacher_model,
-    reload_dataloaders,
 )
 from options import parse_args
 from tensorboardX import SummaryWriter

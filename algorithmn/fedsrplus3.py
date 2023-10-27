@@ -106,9 +106,9 @@ class Rzy(nn.Module):
     def __init__(self, num_classes: int, z_dim: int, n_components: int):
         super().__init__()
         self.mu = nn.Parameter(torch.zeros(num_classes, n_components, z_dim))
-        self.sigma = nn.Parameter(torch.ones(num_classes, n_components, z_dim))
+        self.sigma = nn.Parameter(torch.rand(num_classes, n_components, z_dim))
         self.C = nn.Parameter(torch.ones([]))
-        self.pi = nn.Parameter(torch.ones(num_classes, n_components))
+        self.pi = nn.Parameter(torch.rand(num_classes, n_components))
 
 
 class FedSRPlus3Client(FedClientBase):
@@ -185,11 +185,9 @@ class FedSRPlus3Client(FedClientBase):
                 loss = self.criterion(logits, labels)
                 r_sigma_softplus = F.softplus(self.r.sigma)
 
-                
-                reg_L2R = z.norm(dim=1).mean() + r_sigma_softplus.norm(dim=1).mean()
+                reg_L2R = z.norm(dim=1).mean() + r_sigma_softplus.norm(dim=2).mean()
                 loss += self.l2r_coeff * reg_L2R
 
-                
                 r_mus = self.r.mu[y]
                 r_sigmas = r_sigma_softplus[y]
                 r_pis = self.r.pi[y]

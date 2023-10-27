@@ -3,6 +3,7 @@ import torch
 from algorithmn.fedgmm import FedGMMClient
 from algorithmn.fedsr import FedSRClient
 from data_loader import get_dataloaders, get_model
+from datasets import RotatedMNIST
 from models.cnn import PACSCNN, CifarCNN, ComplexCNN
 from models.generator import Generator
 from options import parse_args
@@ -39,31 +40,7 @@ if __name__ == "__main__":
 
     # client_idxs = list(range(20))
 
-    # dv = cal_dist_avg_difference_vector(client_idxs, wm)
-    # print("dv", dv)
-    # cv = optimize_collaborate_vector(dv, 0.8, [0.1 for _ in range(20)])
-    # print("cv", cv)
-    sd = torch.load("./training_data/global_ckpt_4.pth", map_location="cpu")
-    # print(sd["r.sigma"][0])
-    # print(sd["r.mu"][0])
-    print(sd["r.pi"][0])
-    sd = torch.load("./training_data/global_ckpt_19.pth", map_location="cpu")
-    # print(sd["r.sigma"][0])
-    # print(sd["r.mu"][0])
-    print(sd["r.pi"][0])
-    sd = torch.load("./training_data/global_ckpt_49.pth", map_location="cpu")
-    # print(sd["r.sigma"][0])
-    # print(sd["r.mu"][0])
-    print(sd["r.pi"][0])
-    sd = torch.load("./training_data/global_ckpt_99.pth", map_location="cpu")
-    # print(sd["r.sigma"][0])
-    # print(sd["r.mu"][0])
-    print(sd["r.pi"][0])
-    sd = torch.load("./training_data/global_ckpt_149.pth", map_location="cpu")
-    # print(sd["r.sigma"][0])
-    # print(sd["r.mu"][0])
-    print(sd["r.pi"][0])
-    # print(sd["r.sigma"].mean(dim=1).shape)
+    RotatedMNIST.prepare("./data")
 
     # sd2 = torch.load("./training_data/global.pth", map_location="cpu")
     # print(sd2["r.sigma"] - sd["r.sigma"].mean(dim=1))

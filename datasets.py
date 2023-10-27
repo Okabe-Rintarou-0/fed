@@ -1,7 +1,8 @@
 import os
 from PIL import ImageFile
+import torch
 from torchvision import transforms
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import ImageFolder, MNIST
 import shutil
 import git
 
@@ -35,14 +36,17 @@ class MultipleDomainDataset:
 
 
 class MultipleEnvironmentImageFolder(MultipleDomainDataset):
-    def __init__(self, root, test_envs, augment):
+    def __init__(
+        self, root, test_envs, augment, input_size=(224, 224), environments=None
+    ):
         super().__init__()
-        environments = [f.name for f in os.scandir(root) if f.is_dir()]
-        environments = sorted(environments)
+        if environments is None:
+            environments = [f.name for f in os.scandir(root) if f.is_dir()]
+            environments = sorted(environments)
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((224, 224)),
+                transforms.Resize(input_size),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -52,7 +56,7 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
 
         self.augment_transform = transforms.Compose(
             [
-                transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
+                transforms.RandomResizedCrop(input_size[0], scale=(0.7, 1.0)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ColorJitter(0.3, 0.3, 0.3, 0.3),
                 transforms.RandomGrayscale(),
@@ -75,11 +79,6 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
 
             self.datasets.append(env_dataset)
 
-        self.input_shape = (
-            3,
-            224,
-            224,
-        )
         self.num_classes = len(self.datasets[-1].classes)
 
 
@@ -101,6 +100,54 @@ class PACS(MultipleEnvironmentImageFolder):
             self.download_dataset()
 
         super().__init__(self.dir, test_envs, augment)
+
+
+class RotatedMNIST(MultipleEnvironmentImageFolder):
+    ENVIRONMENTS = ["M15", "M30", "M45", "M60", "M75", "M0"]
+
+    @staticmethod
+    def prepare(root):
+        output_dir = os.path.join(root, "RotatedMNIST")
+        mnist_dataset = MNIST(root=root, train=True, download=True)
+        selected_indices = []
+        for i in range(10):
+            indices = torch.tensor(
+                [idx for idx, (_, label) in enumerate(mnist_dataset) if label == i]
+            )
+            selected_indices.extend(indices[:100])
+        selected_data = [mnist_dataset[idx] for idx in selected_indices]
+
+        for degree in [0, 15, 30, 45, 60, 75]:
+            rotated_data_dir = os.path.join(output_dir, f"M{degree}")
+            os.makedirs(rotated_data_dir, exist_ok=True)
+
+            for i in range(10):
+                os.makedirs(os.path.join(rotated_data_dir, f"{i}"), exist_ok=True)
+
+            for idx, (image, label) in enumerate(selected_data):
+                rotated_image = transforms.functional.rotate(image, degree)
+                rotated_image.save(
+                    os.path.join(rotated_data_dir, f"{label}", f"{idx}.png")
+                )
+
+    def download_dataset(self):
+        git.Repo.clone_from(
+            "https://gitee.com/ymwm233/RotatedMNIST",
+            self.dir,
+            progress=CloneProgress("gitee.com/ymwm233/RotatedMNIST"),
+        )
+
+    def __init__(self, root, test_envs, augment=True, download=True):
+        self.dir = os.path.join(root, "RotatedMNIST/")
+        if download and not os.path.exists(self.dir):
+            self.download_dataset()
+        super().__init__(
+            self.dir,
+            test_envs,
+            augment,
+            input_size=(28, 28),
+            environments=self.ENVIRONMENTS,
+        )
 
 
 class DomainNet(MultipleEnvironmentImageFolder):
