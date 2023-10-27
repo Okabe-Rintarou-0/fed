@@ -216,8 +216,6 @@ if __name__ == "__main__":
         "distill_clients": distill_clients,
         "attack_clients": attack_clients,
         "attack_type": args.attack_type,
-        "train_client_idxs": train_client_idxs,
-        "test_client_idxs": test_client_idxs,
     }
 
     # write_training_data(

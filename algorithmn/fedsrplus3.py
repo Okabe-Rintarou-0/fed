@@ -183,36 +183,36 @@ class FedSRPlus3Client(FedClientBase):
                 z, logits, (z_mu, z_sigma) = model(images, return_dist=True)
                 y = labels
                 loss = self.criterion(logits, labels)
+                r_sigma_softplus = F.softplus(self.r.sigma)
 
-                if self.l2r_coeff != 0.0:
-                    reg_L2R = z.norm(dim=1).mean()
-                    loss += self.l2r_coeff * reg_L2R
+                
+                reg_L2R = z.norm(dim=1).mean() + r_sigma_softplus.norm(dim=1).mean()
+                loss += self.l2r_coeff * reg_L2R
 
-                if self.cmi_coeff != 0.0:
-                    r_sigma_softplus = F.softplus(self.r.sigma)
-                    r_mus = self.r.mu[y]
-                    r_sigmas = r_sigma_softplus[y]
-                    r_pis = self.r.pi[y]
-                    z_mu_scaled = z_mu * self.r.C
-                    z_sigma_scaled = z_sigma * self.r.C
-                    z_pi = 1 / self.n_components
-                    reg_CMI = 0
-                    item1 = 0
-                    item2 = 0
-                    for m1 in range(self.n_components):
-                        r_mu = r_mus[:, m1]
-                        r_sigma = r_sigmas[:, m1]
-                        r_pi = r_pis[:, m1]
-                        item1 = z_pi * torch.log(z_pi / r_pi)
-                        item2 = z_pi * (
-                            torch.log(r_sigma)
-                            - torch.log(z_sigma_scaled)
-                            + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
-                            / (2 * r_sigma**2)
-                            - 0.5
-                        ).sum(1)
-                        this_reg_CMI = item1 + item2
-                        reg_CMI += this_reg_CMI.mean()
+                
+                r_mus = self.r.mu[y]
+                r_sigmas = r_sigma_softplus[y]
+                r_pis = self.r.pi[y]
+                z_mu_scaled = z_mu * self.r.C
+                z_sigma_scaled = z_sigma * self.r.C
+                z_pi = 1 / self.n_components
+                reg_CMI = 0
+                item1 = 0
+                item2 = 0
+                for m1 in range(self.n_components):
+                    r_mu = r_mus[:, m1]
+                    r_sigma = r_sigmas[:, m1]
+                    r_pi = r_pis[:, m1]
+                    item1 = z_pi * torch.log(z_pi / r_pi)
+                    item2 = z_pi * (
+                        torch.log(r_sigma)
+                        - torch.log(z_sigma_scaled)
+                        + (z_sigma_scaled**2 + (z_mu_scaled - r_mu) ** 2)
+                        / (2 * r_sigma**2)
+                        - 0.5
+                    ).sum(1)
+                    this_reg_CMI = item1 + item2
+                    reg_CMI += this_reg_CMI.mean()
 
                 loss += self.cmi_coeff * reg_CMI
                 loss.backward()
