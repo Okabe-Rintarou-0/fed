@@ -257,6 +257,29 @@ def get_protos(protos):
     return protos_mean
 
 
+def aggregate_dist(
+    mus: List[torch.Tensor],
+    sigmas: List[torch.Tensor],
+    avg_confs: List[torch.Tensor],
+    agg_weights: List[float],
+    num_classes: int,
+):
+    agg_weights = torch.tensor(agg_weights)
+    agg_weights /= torch.sum(agg_weights)
+
+    agg_mu = torch.zeros_like(mus[0])
+    agg_sigma = torch.zeros_like(sigmas[0])
+
+    avg_confs = torch.stack(avg_confs)
+    # print(avg_confs.shape)
+    for label in range(num_classes):
+        avg_conf_weight = F.softmax(avg_confs[:, label], dim=0)
+        for i in range(len(mus)):
+            agg_mu[label] += avg_conf_weight[i] * agg_weights[i] * mus[i][label]
+            agg_sigma[label] += avg_conf_weight[i] * agg_weights[i] * sigmas[i][label]
+    return agg_mu, agg_sigma
+
+
 def weight_flatten(model: Dict[str, Any]):
     params = []
     for k in model:
@@ -337,8 +360,10 @@ def cal_dist_avg_difference_vector(
             )
             kl_div += this_kl_div.mean()
         dist_avg_difference_vector.append(kl_div)
-    dist_avg_difference_vector = torch.tensor(dist_avg_difference_vector, dtype=torch.float)
-    dist_avg_difference_vector /= (torch.max(dist_avg_difference_vector) + 1e-10)
+    dist_avg_difference_vector = torch.tensor(
+        dist_avg_difference_vector, dtype=torch.float
+    )
+    dist_avg_difference_vector /= torch.max(dist_avg_difference_vector) + 1e-10
     return F.softmax(dist_avg_difference_vector, dim=0)
 
 
@@ -371,8 +396,8 @@ def update_collaborate_vector(
     weights_map: Dict[int, Dict[str, Any]],
     agg_weights: List[float],
     alpha: float,
-):  
-    print('alpha', alpha)
+):
+    print("alpha", alpha)
     print("old agg", agg_weights)
     difference_vector = cal_dist_avg_difference_vector(client_idxs, weights_map)
     collabrate_vector = optimize_collaborate_vector(
