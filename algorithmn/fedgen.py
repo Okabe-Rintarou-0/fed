@@ -116,7 +116,6 @@ class FedGenServer(FedServerBase):
         idx_clients = sorted(idx_clients)
 
         global_weight = self.global_weight
-        non_het_model_acc2s = []
         agg_weights = []
         local_weights = []
         local_losses = []
@@ -144,9 +143,6 @@ class FedGenServer(FedServerBase):
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
 
-            if not local_client.het_model:
-                non_het_model_acc2s.append(local_acc2)
-
             acc1_dict[f"client_{idx}"] = local_acc1
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
@@ -160,7 +156,6 @@ class FedGenServer(FedServerBase):
         )
 
         loss_avg = sum(local_losses) / len(local_losses)
-        non_het_model_acc2_avg = sum(non_het_model_acc2s) / len(non_het_model_acc2s)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
         acc_avg2 = sum(local_acc2s) / len(local_acc2s)
 
@@ -169,7 +164,6 @@ class FedGenServer(FedServerBase):
                 "loss_avg": loss_avg,
             },
             acc_map={
-                "non_het_model_acc2_avg": non_het_model_acc2_avg,
                 "acc_avg1": acc_avg1,
                 "acc_avg2": acc_avg2,
             },
@@ -192,8 +186,6 @@ class FedGenClient(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
-        teacher_model=None,
     ):
         super().__init__(
             idx,
@@ -202,8 +194,6 @@ class FedGenClient(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
-            teacher_model,
         )
         self.label_counts = self.label_distribution()
         self.generator = None

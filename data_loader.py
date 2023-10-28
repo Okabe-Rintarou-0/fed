@@ -6,8 +6,10 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from datasets import PACS, MultipleDomainDataset, RotatedMNIST
+from models.base import FedModel
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
+from models.mlp import MNISTMLP
 from models.resnet import CifarResNet, MNISTResNet, PACSResNet
 
 DATASET_PATH = "./data"
@@ -248,6 +250,20 @@ def cifar10_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
+def mnist_noniid_dirichlet(
+    dataset: datasets.MNIST,
+    num_clients: int,
+    beta: float,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    num_dataset = len(dataset)
+    targets = np.array(dataset.targets)
+    client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
 def mnist_dataset() -> Tuple[Dataset, Dataset]:
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
@@ -381,6 +397,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
         if iid:
             train_loaders = mnist_iid(trainset, num_clients, local_bs, shuffle=True)
             test_loaders = mnist_iid(testset, num_clients, local_bs, shuffle=False)
+        else:
+            train_loaders = mnist_noniid_dirichlet(
+                trainset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=True,
+                get_index=get_index,
+            )
+            test_loaders = mnist_noniid_dirichlet(
+                testset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=False,
+                get_index=get_index,
+            )
     elif dataset in ["cifar10", "cifar"]:
         trainset, testset = cifar10_dataset()
         if iid:
@@ -476,21 +509,33 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     return heterogeneous_model
 
 
-def get_teacher_model(args: Namespace) -> nn.Module:
+# get_models returns (student model, ta model, and teacher model)
+def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
     dataset = args.dataset
-    device = args.device
     num_classes = args.num_classes
-    model_het = args.model_het
     prob = args.prob
     z_dim = args.z_dim
-    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        heterogeneous_model = CifarResNet(
+    model_het = True
+    student, ta, teacher = None, None, None
+
+    if dataset == "mnist":
+        student = MNISTMLP(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
             z_dim=z_dim,
-        ).to(device)
-        args.lr = 0.02
-    else:
-        raise NotImplementedError()
-    return heterogeneous_model
+        )
+        ta = MNISTCNN(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+        teacher = MNISTResNet(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+
+        return student, ta, teacher

@@ -1,54 +1,53 @@
 from typing import List
-
-import torch
 from models.base import FedModel
 from torch import nn
-from torchvision.models import resnet18, resnet50, ResNet18_Weights, ResNet50_Weights
-import torch.nn.functional as F
 import torch.distributions as distributions
+import torch.nn.functional as F
 
 
-class ResNetBase(FedModel):
+class MLPBase(FedModel):
     def __init__(
         self,
         num_classes=10,
         probabilistic=False,
         num_samples=1,
-        backbone="resnet18",
         model_het=False,
         z_dim=128,
-        input_channel=3,
+        input_dim=28 * 28,
+        hidden_dim=128,
     ):
         super().__init__()
         self.probabilistic = probabilistic
         self.num_samples = num_samples
         self.model_het = model_het
         self.z_dim = z_dim
+        self.input_dim = input_dim
 
-        if backbone == "resnet18":
-            self.backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
-        elif backbone == "resnet50":
-            self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
-        else:
-            raise NotImplementedError()
+        self.fe1 = nn.Linear(input_dim, hidden_dim)
+        self.fe2 = nn.Linear(hidden_dim, z_dim)
+        self.act = nn.LeakyReLU()
 
-        if input_channel == 1:
-            self.backbone.conv1 = torch.nn.Conv2d(
-                1, 64, (7, 7), (2, 2), (3, 3), bias=False
-            )
-
-        out_dim = z_dim * 2 if probabilistic else z_dim
-        self.backbone.fc = nn.Linear(self.backbone.fc.in_features, out_dim)
+        if probabilistic:
+            z_dim *= 2
         self.cls = nn.Linear(z_dim, num_classes)
+        self.base_weight_keys = [
+            "fe1.weight",
+            "fe1.bias",
+            "fe2.weight",
+            "fe2.bias",
+        ]
         self.classifier_weight_keys = [
             "cls.weight",
             "cls.bias",
         ]
+
         self.all_keys = list(self.state_dict().keys())
 
     def forward(self, x, return_dist=False):
         # --------- Extract Features --------- #
-        x = self.backbone(x)
+        x = x.view(-1, self.input_dim)
+        x = self.act(self.fe1(x))
+        x = self.act(self.fe2(x))
 
         if not self.probabilistic:
             z = x
@@ -69,6 +68,7 @@ class ResNetBase(FedModel):
 
     def classifier(self, z):
         y = self.cls(z)
+        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
@@ -78,46 +78,23 @@ class ResNetBase(FedModel):
         return self.classifier_weight_keys
 
 
-class CifarResNet(ResNetBase):
+class MNISTMLP(MLPBase):
     def __init__(
         self,
         num_classes=10,
         probabilistic=False,
         num_samples=1,
-        backbone="resnet18",
         model_het=False,
         z_dim=128,
+        input_dim=28 * 28,
+        hidden_dim=128,
     ):
         super().__init__(
-            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
-        )
-
-
-class MNISTResNet(ResNetBase):
-    def __init__(
-        self,
-        num_classes=10,
-        probabilistic=False,
-        num_samples=1,
-        backbone="resnet18",
-        model_het=False,
-        z_dim=128,
-    ):
-        super().__init__(
-            num_classes, probabilistic, num_samples, backbone, model_het, z_dim, 1
-        )
-
-
-class PACSResNet(ResNetBase):
-    def __init__(
-        self,
-        num_classes=7,
-        probabilistic=False,
-        num_samples=1,
-        backbone="resnet18",
-        model_het=False,
-        z_dim=128,
-    ):
-        super().__init__(
-            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
+            num_classes,
+            probabilistic,
+            num_samples,
+            model_het,
+            z_dim,
+            input_dim,
+            hidden_dim,
         )

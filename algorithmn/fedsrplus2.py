@@ -141,8 +141,6 @@ class FedSRPlus2Client(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
-        teacher_model=None,
     ):
         super().__init__(
             idx,
@@ -151,8 +149,6 @@ class FedSRPlus2Client(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
-            teacher_model,
         )
         assert (
             args.prob

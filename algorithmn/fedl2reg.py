@@ -103,8 +103,6 @@ class FedL2RegClient(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
-        teacher_model=None,
     ):
         super().__init__(
             idx,
@@ -113,8 +111,6 @@ class FedL2RegClient(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
-            teacher_model,
         )
         self.mse_loss = nn.MSELoss()
 

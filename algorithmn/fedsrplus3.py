@@ -64,9 +64,6 @@ class FedSRPlus3Server(FedServerBase):
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
 
-            if not local_client.het_model:
-                non_het_model_acc2s.append(local_acc2)
-
             acc1_dict[f"client_{idx}"] = local_acc1
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
@@ -120,8 +117,6 @@ class FedSRPlus3Client(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
-        teacher_model=None,
     ):
         super().__init__(
             idx,
@@ -130,8 +125,6 @@ class FedSRPlus3Client(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
-            teacher_model,
         )
         assert (
             args.prob

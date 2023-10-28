@@ -94,8 +94,6 @@ class FedPerClient(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
-        teacher_model=None,
     ):
         super().__init__(
             idx,
@@ -104,8 +102,6 @@ class FedPerClient(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
-            teacher_model,
         )
         self.w_local_keys = self.local_model.classifier_weight_keys
 

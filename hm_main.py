@@ -2,7 +2,6 @@ from copy import deepcopy
 import json
 import os
 import random
-from typing import List
 from algorithmn.fedgen import FedGenClient, FedGenServer
 from algorithmn.fedsrgen import FedSRGenClient, FedSRGenServer
 
@@ -29,6 +28,7 @@ from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 from data_loader import (
     get_dataloaders,
     get_model,
+    get_models,
 )
 from options import parse_args
 from tensorboardX import SummaryWriter
@@ -94,8 +94,9 @@ if __name__ == "__main__":
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
-    # construct model
-    global_model = get_model(args)
+    args.model_het = True
+
+    student_model, ta_model, teacher_model = get_models(args)
 
     train_rule = args.train_rule
     # Set up tensorboard summary writer
@@ -137,6 +138,16 @@ if __name__ == "__main__":
     attack_clients = []
     client_idxs = list(range(args.num_clients))
 
+    client_idx_set = set(client_idxs)
+    ta_num = int(args.ta_percent * args.num_clients)
+    ta_clients = random.sample(list(client_idx_set), ta_num)
+    print("ta clients:", ta_clients)
+
+    client_idx_set -= set(ta_clients)
+    teacher_num = int(args.teacher_percent * args.num_clients)
+    teacher_clients = random.sample(list(client_idx_set), ta_num)
+    print("teacher clients:", teacher_clients)
+
     if args.attack:
         sample_size = int(args.attack_percent * args.num_clients)
         attack_clients = random.sample(client_idxs, sample_size)
@@ -145,6 +156,8 @@ if __name__ == "__main__":
 
     training_data = {
         "round": 0,
+        "ta_clients": ta_clients,
+        "teacher_clients": teacher_clients,
         "attack_clients": attack_clients,
         "attack_type": args.attack_type,
     }
@@ -155,7 +168,13 @@ if __name__ == "__main__":
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
-            local_model = deepcopy(global_model)
+            if idx in ta_clients:
+                local_model = deepcopy(ta_model)
+            elif idx in teacher_clients:
+                local_model = deepcopy(teacher_model)
+            else:
+                local_model = deepcopy(student_model)
+
             train_loader = train_loaders[idx]
             test_loader = test_loaders[idx]
             client = Client(
@@ -177,7 +196,7 @@ if __name__ == "__main__":
             bar.update(1)
 
     server = Server(
-        args=args, global_model=global_model, clients=local_clients, writer=writer
+        args=args, global_model=student_model, clients=local_clients, writer=writer
     )
 
     start_round = args.start_round

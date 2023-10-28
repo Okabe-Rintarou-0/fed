@@ -15,6 +15,7 @@ class SimpleCNN(FedModel):
         model_het=False,
         z_dim=128,
         conv_out_dim=64 * 3 * 3,
+        input_channel=3,
     ):
         super().__init__()
         self.probabilistic = probabilistic
@@ -22,14 +23,14 @@ class SimpleCNN(FedModel):
         self.model_het = model_het
         self.z_dim = z_dim
 
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=5, padding=0)
+        self.conv1 = nn.Conv2d(input_channel, 16, kernel_size=5, padding=0)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 32, 5, padding=1)
         self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
 
         out_dim = z_dim * 2 if probabilistic else z_dim
         self.fc1 = nn.Linear(conv_out_dim, out_dim)
-        self.fc2 = nn.Linear(z_dim, num_classes, bias=True)
+        self.cls = nn.Linear(z_dim, num_classes, bias=True)
         self.base_weight_keys = [
             "conv1.weight",
             "conv1.bias",
@@ -41,8 +42,8 @@ class SimpleCNN(FedModel):
             "fc1.bias",
         ]
         self.classifier_weight_keys = [
-            "fc2.weight",
-            "fc2.bias",
+            "cls.weight",
+            "cls.bias",
         ]
 
         self.all_keys = list(self.state_dict().keys())
@@ -73,7 +74,7 @@ class SimpleCNN(FedModel):
         return z, y
 
     def classifier(self, z):
-        y = self.fc2(z)
+        y = self.cls(z)
         y = F.softmax(y, dim=1)
         return y
 
@@ -108,7 +109,7 @@ class ComplexCNN(FedModel):
 
         out_dim = z_dim * 2 if probabilistic else z_dim
         self.fc1 = nn.Linear(conv_out_dim, out_dim)
-        self.fc2 = nn.Linear(z_dim, num_classes, bias=True)
+        self.cls = nn.Linear(z_dim, num_classes, bias=True)
         self.base_weight_keys = [
             "conv1.weight",
             "conv1.bias",
@@ -122,8 +123,8 @@ class ComplexCNN(FedModel):
             "fc1.bias",
         ]
         self.classifier_weight_keys = [
-            "fc2.weight",
-            "fc2.bias",
+            "cls.weight",
+            "cls.bias",
         ]
 
         self.all_keys = list(self.state_dict().keys())
@@ -155,7 +156,7 @@ class ComplexCNN(FedModel):
         return z, y
 
     def classifier(self, z):
-        y = self.fc2(z)
+        y = self.cls(z)
         y = F.softmax(y, dim=1)
         return y
 
@@ -220,6 +221,7 @@ class MNISTCNN(SimpleCNN):
             model_het,
             z_dim,
             64 * 2 * 2,
+            1
         )
 
 
@@ -244,7 +246,7 @@ class CNN_FMNIST(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(16, 32, 5, padding=1)
         self.fc1 = nn.Linear(32 * 5 * 5, 128)
-        self.fc2 = nn.Linear(128, num_classes, bias=True)
+        self.cls = nn.Linear(128, num_classes, bias=True)
         self.base_weight_keys = [
             "conv1.weight",
             "conv1.bias",
@@ -254,8 +256,8 @@ class CNN_FMNIST(nn.Module):
             "fc1.bias",
         ]
         self.classifier_weight_keys = [
-            "fc2.weight",
-            "fc2.bias",
+            "cls.weight",
+            "cls.bias",
         ]
 
     def forward(self, x):

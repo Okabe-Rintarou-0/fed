@@ -13,9 +13,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--local_epoch", type=int, default=1, help="the number of local epochs"
     )
-    parser.add_argument(
-        "--augment", action='store_true', help="data augment"
-    )
+    parser.add_argument("--augment", action="store_true", help="data augment")
     parser.add_argument("--local_bs", type=int, default=50, help="local batch size")
     parser.add_argument("--lr", type=float, default=0.01, help="learning rate")
     parser.add_argument("--momentum", type=float, default=0.5, help="SGD momentum")
@@ -26,7 +24,7 @@ def parse_args() -> argparse.Namespace:
         help="the training rule for personalized FL",
     )
     parser.add_argument("--iid", action="store_true", help="use iid dataset or not")
-    parser.add_argument("--dataset", type=str, default="cifar", help="name of dataset")
+    parser.add_argument("--dataset", type=str, default="mnist", help="name of dataset")
     parser.add_argument("--num_classes", type=int, default=10, help="number of classes")
     parser.add_argument(
         "--lam", type=float, default=1.0, help="coefficient for reg term"
@@ -34,6 +32,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--record_client_data", action="store_true", help="Record label distribution"
     )
+    parser.add_argument("--teacher_percent", default=0, type=float)
+    parser.add_argument("--ta_percent", default=0, type=float)
     parser.add_argument("--start_round", type=int, default=0)
     parser.add_argument(
         "--device",
@@ -52,26 +52,9 @@ def parse_args() -> argparse.Namespace:
         default=0.01,
         help="Proximal term",
     )
-    parser.add_argument(
-        "--distill_percent",
-        type=float,
-        default=0.2,
-        help="Percent of distilled clients",
-    )
-    parser.add_argument(
-        "--distill_lambda",
-        type=float,
-        default=0.4,
-        help="Distill temperature",
-    )
     parser.add_argument("--attack", action="store_true")
     parser.add_argument("--attack_percent", type=float, default=0.2)
     parser.add_argument("--attack_type", type=str, default="inv_grad")
-    parser.add_argument(
-        "--distill",
-        action="store_true",
-        help="Distill",
-    )
     parser.add_argument(
         "--gen_batch_size",
         type=int,
@@ -103,12 +86,6 @@ def parse_args() -> argparse.Namespace:
         help="Use heterogeneous domain",
     )
     parser.add_argument(
-        "--model_het_percent",
-        type=float,
-        default=0.2,
-        help="Heterogeneous model percent",
-    )
-    parser.add_argument(
         "--prob", action="store_true", default=False, help="Use probabilistic model"
     )
     parser.add_argument("--l2r_coeff", type=float, default=1e-2)
@@ -121,21 +98,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
-    parser.add_argument(
-        "--iter_num", type=int, default=0
-    )
+    parser.add_argument("--iter_num", type=int, default=0)
     parser.add_argument("--base_dir", type=str, default="./", help="Base directory")
     args = parser.parse_args()
 
     if args.train_rule == "FedGMM":
         args.get_index = True
-    elif "Distill" in args.train_rule:
-        args.distill = True
 
     if args.dataset == "pacs":
         args.domain_het = True
         args.iid = True
         args.num_classes = 7
+    elif args.dataset == "rmnist":
+        args.domain_het = True
+        args.iid = True
+        args.num_classes = 10
 
     if not args.attack:
         args.attack_type = "none"

@@ -23,8 +23,6 @@ class FedClientBase:
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None,
-        het_model: bool,
-        teacher_model: FedModel | None,
     ):
         self.idx = idx
         self.args = args
@@ -35,8 +33,6 @@ class FedClientBase:
         self.device = args.device
         self.criterion = nn.CrossEntropyLoss()
         self.global_protos = None
-        self.het_model = het_model
-        self.teacher_model = teacher_model
 
         self.attack = self.idx in args.attackers
 
