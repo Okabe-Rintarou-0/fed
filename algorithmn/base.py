@@ -4,7 +4,7 @@ from argparse import Namespace
 from typing import Any, Dict, List
 
 import torch
-from algorithmn.models import LocalTrainResult
+from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from torch.utils.data import DataLoader
 from torch import nn
 from attack import manipulate_one_model
@@ -101,9 +101,13 @@ class FedServerBase:
         self.clients = clients
         self.writer = writer
 
-    @abstractmethod
+    @staticmethod
     def analyze_hm_losses(
-        client_idxs, round_losses, result: LocalTrainResult, ta_clients, teacher_clients
+        client_idxs,
+        round_losses,
+        result: GlobalTrainResult,
+        ta_clients,
+        teacher_clients,
     ):
         num_clients = len(client_idxs)
         ta_losses = []

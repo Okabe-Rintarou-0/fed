@@ -89,7 +89,11 @@ class FedAvgServer(FedServerBase):
 
         if self.args.model_het:
             self.analyze_hm_losses(
-                local_losses, result, self.args.ta_clients, self.args.teacher_clients
+                idx_clients,
+                local_losses,
+                result,
+                self.args.ta_clients,
+                self.args.teacher_clients,
             )
 
         if self.writer is not None:
