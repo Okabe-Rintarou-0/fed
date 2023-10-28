@@ -13,6 +13,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--local_epoch", type=int, default=1, help="the number of local epochs"
     )
+    parser.add_argument(
+        "--augment", action='store_true', help="data augment"
+    )
     parser.add_argument("--local_bs", type=int, default=50, help="local batch size")
     parser.add_argument("--lr", type=float, default=0.01, help="learning rate")
     parser.add_argument("--momentum", type=float, default=0.5, help="SGD momentum")

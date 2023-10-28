@@ -8,7 +8,7 @@ from torch import nn
 from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
-from models.resnet import CifarResNet, PACSResNet
+from models.resnet import CifarResNet, MNISTResNet, PACSResNet
 
 DATASET_PATH = "./data"
 
@@ -440,7 +440,7 @@ def get_model(args: Namespace) -> nn.Module:
             z_dim=z_dim,
         )
     elif dataset == "rmnist":
-        global_model = MNISTCNN(
+        global_model = MNISTResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
