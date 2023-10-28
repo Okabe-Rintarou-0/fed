@@ -253,6 +253,7 @@ class FedSRPlus5Client(FedClientBase):
                 rand_labels = torch.tensor(
                     np.random.choice(list(range(self.args.num_classes)), batch_size),
                     device=self.device,
+                    dtype=torch.long
                 )
 
                 sampled_mus = self.global_mus[rand_labels]
