@@ -91,6 +91,8 @@ class FedAvgServer(FedServerBase):
             self.analyze_hm_losses(
                 idx_clients,
                 local_losses,
+                local_acc1s,
+                local_acc2s,
                 result,
                 self.args.ta_clients,
                 self.args.teacher_clients,
