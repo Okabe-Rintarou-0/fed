@@ -141,11 +141,13 @@ if __name__ == "__main__":
     client_idx_set = set(client_idxs)
     ta_num = int(args.ta_percent * args.num_clients)
     ta_clients = random.sample(list(client_idx_set), ta_num)
+    args.ta_clients = ta_clients
     print("ta clients:", ta_clients)
 
     client_idx_set -= set(ta_clients)
     teacher_num = int(args.teacher_percent * args.num_clients)
-    teacher_clients = random.sample(list(client_idx_set), ta_num)
+    teacher_clients = random.sample(list(client_idx_set), teacher_num)
+    args.teacher_clients = teacher_clients
     print("teacher clients:", teacher_clients)
 
     if args.attack:
@@ -182,7 +184,7 @@ if __name__ == "__main__":
                 args=args,
                 train_loader=train_loader,
                 test_loader=test_loader,
-                local_model=local_model,
+                local_model=local_model.to(args.device),
                 writer=writer,
             )
 

@@ -102,6 +102,26 @@ class FedServerBase:
         self.writer = writer
 
     @abstractmethod
+    def analyze_hm_losses(
+        client_idxs, round_losses, result: LocalTrainResult, ta_clients, teacher_clients
+    ):
+        num_clients = len(client_idxs)
+        ta_losses = []
+        teacher_losses = []
+        for i in range(num_clients):
+            client_idx = client_idxs[i]
+            round_loss = round_losses[i]
+            if client_idx in ta_clients:
+                ta_losses.append(round_loss)
+            elif client_idx in teacher_clients:
+                teacher_losses.append(round_loss)
+
+        if len(ta_losses) > 0:
+            result.loss_map["ta_avg_loss"] = sum(ta_losses) / num_clients
+        if len(teacher_losses) > 0:
+            result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / num_clients
+
+    @abstractmethod
     def train_one_round(self, round: int):
         pass
 

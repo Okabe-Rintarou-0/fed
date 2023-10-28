@@ -117,4 +117,6 @@ def parse_args() -> argparse.Namespace:
     if not args.attack:
         args.attack_type = "none"
     args.attackers = []
+    args.ta_clients = []
+    args.teacher_clients = []
     return args

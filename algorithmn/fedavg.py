@@ -86,6 +86,12 @@ class FedAvgServer(FedServerBase):
                 "acc_avg2": acc_avg2,
             },
         )
+
+        if self.args.model_het:
+            self.analyze_hm_losses(
+                local_losses, result, self.args.ta_clients, self.args.teacher_clients
+            )
+
         if self.writer is not None:
             self.writer.add_scalars("clients_acc1", acc1_dict, round)
             self.writer.add_scalars("clients_acc2", acc2_dict, round)
@@ -149,6 +155,7 @@ class FedAvgClient(FedClientBase):
         result.acc_map["acc2"] = acc2
         round_loss = np.sum(round_losses) / len(round_losses)
         result.loss_map["round_loss"] = round_loss
+
         print(
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
