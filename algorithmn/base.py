@@ -139,16 +139,16 @@ class FedServerBase:
                 student_acc2s.append(acc2)
 
         if len(ta_losses) > 0:
-            result.loss_map["ta_avg_loss"] = sum(ta_losses) / num_clients
-            result.acc_map["ta_acc1"] = sum(ta_acc1s) / num_clients
-            result.acc_map["ta_acc2"] = sum(ta_acc2s) / num_clients
+            result.loss_map["ta_avg_loss"] = sum(ta_losses) / len(ta_losses)
+            result.acc_map["ta_acc1"] = sum(ta_acc1s) / len(ta_acc1s)
+            result.acc_map["ta_acc2"] = sum(ta_acc2s) / len(ta_acc2s)
         if len(teacher_losses) > 0:
-            result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / num_clients
-            result.acc_map["teacher_acc1"] = sum(teacher_acc1s) / num_clients
-            result.acc_map["teacher_acc2"] = sum(teacher_acc2s) / num_clients
+            result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / len(teacher_losses)
+            result.acc_map["teacher_acc1"] = sum(teacher_acc1s) / len(teacher_acc1s)
+            result.acc_map["teacher_acc2"] = sum(teacher_acc2s) / len(teacher_acc2s)
 
-        result.acc_map["student_acc1"] = sum(student_acc1s) / num_clients
-        result.acc_map["student_acc2"] = sum(student_acc2s) / num_clients
+        result.acc_map["student_acc1"] = sum(student_acc1s) / len(student_acc1s)
+        result.acc_map["student_acc2"] = sum(student_acc2s) / len(student_acc2s)
 
     @abstractmethod
     def train_one_round(self, round: int):

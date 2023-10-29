@@ -395,8 +395,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
     if dataset == "mnist":
         trainset, testset = mnist_dataset()
         if iid:
-            train_loaders = mnist_iid(trainset, num_clients, local_bs, shuffle=True)
-            test_loaders = mnist_iid(testset, num_clients, local_bs, shuffle=False)
+            train_loaders = mnist_iid(
+                trainset, num_clients, local_bs, shuffle=True, get_index=get_index
+            )
+            test_loaders = mnist_iid(
+                testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            )
         else:
             train_loaders = mnist_noniid_dirichlet(
                 trainset,

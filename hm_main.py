@@ -22,6 +22,7 @@ from algorithmn.fedsrplus3 import FedSRPlus3Client, FedSRPlus3Server
 from algorithmn.fedsrplus4 import FedSR4PlusServer, FedSRPlus4Client
 from algorithmn.fedsrplus5 import FedSRPlus5Client, FedSRPlus5Server
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
+from algorithmn.fedtts import FedTTSClient, FedTTSServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 
@@ -46,13 +47,7 @@ FL_CLIENT = {
     "FedSR": FedSRClient,
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
-    "FedSR+": FedSRPlusClient,
-    "FedSR+2": FedSRPlus2Client,
-    "FedSR+3": FedSRPlus3Client,
-    "FedSR+4": FedSRPlus4Client,
-    "FedSR+5": FedSRPlus5Client,
-    "FedGen": FedGenClient,
-    "FedSRGen": FedSRGenClient,
+    "FedTTS": FedTTSClient,
 }
 
 FL_SERVER = {
@@ -66,13 +61,7 @@ FL_SERVER = {
     "FedSR": FedSRServer,
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
-    "FedSR+": FedSRPlusServer,
-    "FedSR+2": FedSRPlus2Server,
-    "FedSR+3": FedSRPlus3Server,
-    "FedSR+4": FedSR4PlusServer,
-    "FedSR+5": FedSRPlus5Server,
-    "FedGen": FedGenServer,
-    "FedSRGen": FedSRGenServer,
+    "FedTTS": FedTTSServer,
 }
 
 
