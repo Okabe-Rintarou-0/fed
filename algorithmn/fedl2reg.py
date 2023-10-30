@@ -60,7 +60,7 @@ class FedL2RegServer(FedServerBase):
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
             local_protos.append(result.protos)
-            label_sizes.append(local_client.label_distribution())
+            label_sizes.append(local_client.label_cnts)
 
             acc1_dict[f"client_{idx}"] = local_acc1
             acc2_dict[f"client_{idx}"] = local_acc2
@@ -125,6 +125,7 @@ class FedL2RegClient(FedClientBase):
             writer,
         )
         self.mse_loss = nn.MSELoss()
+        self.label_cnts = self.label_distribution()
 
     def get_local_protos(self):
         model = self.local_model
@@ -150,8 +151,6 @@ class FedL2RegClient(FedClientBase):
         result = LocalTrainResult()
         global_protos = self.global_protos
         acc1 = self.local_test()
-
-        self.last_model = copy.deepcopy(model)
         # get local prototypes before training, dict:={label: list of sample features}
         local_protos1 = self.get_local_protos()
 
