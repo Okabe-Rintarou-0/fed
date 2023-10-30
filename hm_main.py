@@ -28,7 +28,6 @@ from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 
 from data_loader import (
     get_dataloaders,
-    get_model,
     get_models,
 )
 from options import parse_args

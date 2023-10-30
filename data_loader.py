@@ -9,7 +9,7 @@ from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
-from models.mlp import MNISTMLP
+from models.mlp import MNISTMLP, CifarMLP
 from models.resnet import CifarResNet, MNISTResNet, PACSResNet
 
 DATASET_PATH = "./data"
@@ -541,5 +541,24 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
+    elif dataset == "cifar":
+        student = CifarMLP(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+        ta = CifarCNN(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+        teacher = CifarResNet(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
 
-        return student, ta, teacher
+    return student, ta, teacher

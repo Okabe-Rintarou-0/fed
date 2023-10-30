@@ -13,7 +13,7 @@ class MLPBase(FedModel):
         num_samples=1,
         model_het=False,
         z_dim=128,
-        input_dim=28 * 28,
+        input_dim=1 * 28 * 28,
         hidden_dim=128,
     ):
         super().__init__()
@@ -86,7 +86,28 @@ class MNISTMLP(MLPBase):
         num_samples=1,
         model_het=False,
         z_dim=128,
-        input_dim=28 * 28,
+        input_dim=1 * 28 * 28,
+        hidden_dim=128,
+    ):
+        super().__init__(
+            num_classes,
+            probabilistic,
+            num_samples,
+            model_het,
+            z_dim,
+            input_dim,
+            hidden_dim,
+        )
+
+class CifarMLP(MLPBase):
+    def __init__(
+        self,
+        num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        model_het=False,
+        z_dim=128,
+        input_dim=3 * 32 * 32,
         hidden_dim=128,
     ):
         super().__init__(
