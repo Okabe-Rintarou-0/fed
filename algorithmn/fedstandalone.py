@@ -81,7 +81,6 @@ class FedStandAloneClient(FedClientBase):
         test_loader: DataLoader,
         local_model: FedModel,
         writer: SummaryWriter | None = None,
-        het_model=False,
     ):
         super().__init__(
             idx,
@@ -90,7 +89,6 @@ class FedStandAloneClient(FedClientBase):
             test_loader,
             local_model,
             writer,
-            het_model,
         )
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:

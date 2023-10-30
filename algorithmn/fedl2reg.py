@@ -85,6 +85,18 @@ class FedL2RegServer(FedServerBase):
             loss_map={"loss_avg": loss_avg},
             acc_map={"acc_avg1": acc_avg1, "acc_avg2": acc_avg2},
         )
+
+        if self.args.model_het:
+            self.analyze_hm_losses(
+                idx_clients,
+                local_losses,
+                local_acc1s,
+                local_acc2s,
+                result,
+                self.args.ta_clients,
+                self.args.teacher_clients,
+            )
+
         if self.writer is not None:
             self.writer.add_scalars("clients_acc1", acc1_dict, round)
             self.writer.add_scalars("clients_acc2", acc2_dict, round)
@@ -189,5 +201,5 @@ class FedL2RegClient(FedClientBase):
         if self.writer is not None:
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-            
+
         return result

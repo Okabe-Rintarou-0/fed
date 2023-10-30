@@ -75,9 +75,6 @@ class FedSRPlus2Server(FedServerBase):
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
 
-            if not local_client.het_model:
-                non_het_model_acc2s.append(local_acc2)
-
             acc1_dict[f"client_{idx}"] = local_acc1
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
