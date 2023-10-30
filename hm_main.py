@@ -101,7 +101,9 @@ if __name__ == "__main__":
     if args.attack:
         sub_dir_name = f"{sub_dir_name}_attack"
 
-    sub_dir_name = f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.te_percent}"
+    sub_dir_name = (
+        f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}"
+    )
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     writer = SummaryWriter(log_dir=tensorboard_path)
 
