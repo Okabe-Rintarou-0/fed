@@ -118,6 +118,48 @@ def cifar10_iid(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
+def cifar100_iid(
+    dataset: datasets.CIFAR100,
+    num_clients: int,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    """
+    Sample I.I.D. client data from CIFAR10 dataset
+    """
+    num_classes = len(np.unique(dataset.targets))
+    shard_per_user = num_classes
+    imgs_per_shard = int(len(dataset) / (num_clients * shard_per_user))
+    client_idxs = [np.array([], dtype="int64") for _ in range(num_clients)]
+    idxs_dict = {}
+    for i in range(len(dataset)):
+        label = dataset.targets[i]
+        if label not in idxs_dict.keys():
+            idxs_dict[label] = []
+        idxs_dict[label].append(i)
+
+    rand_set_all = []
+    if len(rand_set_all) == 0:
+        for i in range(num_clients):
+            x = np.random.choice(np.arange(num_classes), shard_per_user, replace=False)
+            rand_set_all.append(x)
+
+    # divide and assign
+    for i in range(num_clients):
+        rand_set_label = rand_set_all[i]
+        rand_set = []
+        for label in rand_set_label:
+            x = np.random.choice(idxs_dict[label], imgs_per_shard, replace=False)
+            rand_set.append(x)
+        client_idxs[i] = np.concatenate(rand_set)
+
+    for value in client_idxs:
+        assert (len(np.unique(torch.tensor(dataset.targets)[value]))) == shard_per_user
+
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
 def cifar10_noniid(
     dataset: datasets.CIFAR10,
     num_clients: int,
@@ -250,6 +292,20 @@ def cifar10_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
+def cifar100_noniid_dirichlet(
+    dataset: datasets.CIFAR100,
+    num_clients: int,
+    beta: float,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    num_dataset = len(dataset)
+    targets = np.array(dataset.targets)
+    client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
 def mnist_noniid_dirichlet(
     dataset: datasets.MNIST,
     num_clients: int,
@@ -296,6 +352,32 @@ def cifar10_dataset() -> Tuple[Dataset, Dataset]:
         root="data", train=True, download=True, transform=transform_train
     )
     testset = datasets.CIFAR10(
+        root="data", train=False, download=True, transform=transform_test
+    )
+    return trainset, testset
+
+
+def cifar100_dataset() -> Tuple[Dataset, Dataset]:
+    transform_train = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ]
+    )
+
+    transform_test = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ]
+    )
+
+    trainset = datasets.CIFAR100(
+        root="data", train=True, download=True, transform=transform_train
+    )
+    testset = datasets.CIFAR100(
         root="data", train=False, download=True, transform=transform_test
     )
     return trainset, testset
@@ -444,6 +526,32 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=False,
                 get_index=get_index,
             )
+    elif dataset in ["cifar100"]:
+        trainset, testset = cifar100_dataset()
+        if iid:
+            train_loaders = cifar100_iid(
+                trainset, num_clients, local_bs, shuffle=True, get_index=get_index
+            )
+            test_loaders = cifar100_iid(
+                testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            )
+        else:
+            train_loaders = cifar100_noniid_dirichlet(
+                trainset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=True,
+                get_index=get_index,
+            )
+            test_loaders = cifar100_noniid_dirichlet(
+                testset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=False,
+                get_index=get_index,
+            )
     elif dataset in ["pacs"]:
         return pacs(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
     elif dataset in ["rmnist"]:
@@ -541,7 +649,7 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-    elif dataset == "cifar":
+    elif dataset in ["cifar", "cifar10", "cifar100"]:
         student = CifarMLP(
             num_classes=num_classes,
             probabilistic=prob,
@@ -560,5 +668,6 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-
+    else:
+        raise NotImplementedError()
     return student, ta, teacher

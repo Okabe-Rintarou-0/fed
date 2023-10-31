@@ -113,6 +113,10 @@ def parse_args() -> argparse.Namespace:
         args.domain_het = True
         args.iid = True
         args.num_classes = 10
+    elif args.dataset in ["cifar10", "cifar"]:
+        args.num_classes = 10
+    elif args.dataset == "cifar100":
+        args.num_classes = 100
 
     if not args.attack:
         args.attack_type = "none"

@@ -107,7 +107,7 @@ if __name__ == "__main__":
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 2
     while os.path.exists(tensorboard_path):
-        tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name, f"_{i}")
+        tensorboard_path = os.path.join(args.base_dir, "tensorboard", f"{sub_dir_name}_{i}")
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
