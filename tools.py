@@ -9,6 +9,7 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from algorithmn.cka import CKA
 from models import CifarCNN
 
 
@@ -327,6 +328,21 @@ def cal_cosine_difference_matrix(
             difference_matrix[i, j] = diff
             difference_matrix[j, i] = diff
     return difference_matrix
+
+
+def cal_protos_diff_vector(
+    protos: List[torch.Tensor], teacher_proto: torch.Tensor, device="cpu"
+):
+    # cka = CKA(device=device)
+    diff = []
+    flatten_teacher_proto = teacher_proto.view(-1)
+    for proto in protos:
+        diff.append(
+            -torch.nn.functional.cosine_similarity(
+                proto.view(-1), flatten_teacher_proto, dim=0
+            )
+        )
+    return torch.tensor(diff)
 
 
 def cal_dist_avg_difference_vector(

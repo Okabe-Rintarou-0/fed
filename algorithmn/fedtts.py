@@ -1,5 +1,6 @@
 from argparse import Namespace
 import copy
+import math
 from typing import List
 from tensorboardX import SummaryWriter
 import torch
@@ -10,7 +11,17 @@ import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from tools import aggregate_protos, aggregate_weights, get_protos
+from tools import (
+    aggregate_protos,
+    aggregate_weights,
+    cal_protos_diff_vector,
+    get_protos,
+    optimize_collaborate_vector,
+)
+
+
+def sin_growth(alpha, epoch, max_epoch):
+    return alpha * math.sin(math.pi / 2 * epoch / max_epoch)
 
 
 class FedTTSServer(FedServerBase):
@@ -26,6 +37,8 @@ class FedTTSServer(FedServerBase):
         self.global_weight = self.global_model.state_dict()
         self.ta_clients = args.ta_clients
         self.teacher_clients = args.teacher_clients
+        self.alpha = args.alpha
+        self.max_round = args.epochs
 
     def aggregate_weights(self, weights_map, agg_weights_map):
         if len(weights_map) == 0:
@@ -34,28 +47,6 @@ class FedTTSServer(FedServerBase):
         weights = [weights_map[idx] for idx in weights_map]
         agg_weights /= sum(agg_weights)
         return aggregate_weights(weights, agg_weights, self.client_aggregatable_weights)
-
-    def aggregate_group_weights(
-        self,
-        stu_weights,
-        ta_weights,
-        teacher_weights,
-        stu_acc,
-        ta_acc,
-        teacher_acc,
-        stu_agg,
-        ta_agg,
-        teacher_agg,
-    ):
-        new_agg_weights = F.softmax(
-            torch.tensor([stu_agg * stu_acc, ta_agg * ta_acc, teacher_agg * teacher_acc])
-            / (stu_agg + ta_agg + teacher_agg)
-        )
-        print(new_agg_weights)
-        weights = [stu_weights, ta_weights, teacher_weights]
-        return aggregate_weights(
-            weights, new_agg_weights, self.client_aggregatable_weights
-        )
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedAvg Global Communication Round : {round} ----")
@@ -71,6 +62,9 @@ class FedTTSServer(FedServerBase):
         local_losses = []
         local_acc1s = []
         local_acc2s = []
+        local_weights = []
+        local_protos = []
+        local_agg_weights = []
 
         acc1_dict = {}
         acc2_dict = {}
@@ -82,11 +76,7 @@ class FedTTSServer(FedServerBase):
         student_protos = []
         student_label_sizes = []
 
-        ta_agg_weights_map = {}
-        ta_weights_map = {}
-        ta_accs = []
-        ta_protos = []
-        ta_label_sizes = []
+        label_sizes = []
 
         teacher_agg_weights_map = {}
         teacher_weights_map = {}
@@ -117,13 +107,13 @@ class FedTTSServer(FedServerBase):
             protos = result.protos
             label_cnts = local_client.label_cnts
 
-            if idx in self.ta_clients:
-                ta_agg_weights_map[idx] = agg_weight
-                ta_weights_map[idx] = weights
-                ta_accs.append(local_acc2)
-                ta_protos.append(protos)
-                ta_label_sizes.append(label_cnts)
-            elif idx in self.teacher_clients:
+            local_agg_weights.append(agg_weight)
+            local_weights.append(weights)
+            local_protos.append(protos)
+
+            label_sizes.append(label_cnts)
+
+            if idx in self.teacher_clients:
                 teacher_agg_weights_map[idx] = agg_weight
                 teacher_weights_map[idx] = weights
                 teacher_accs.append(local_acc2)
@@ -139,52 +129,42 @@ class FedTTSServer(FedServerBase):
         if self.args.attack:
             self.do_attack()
 
-        # aggregate student
-        stu_group_weights = self.aggregate_weights(
-            student_weights_map, student_agg_weights_map
+        self.global_weight = aggregate_weights(
+            local_weights, local_agg_weights, self.client_aggregatable_weights
         )
 
-        # aggregate ta
-        ta_group_weights = self.aggregate_weights(ta_weights_map, ta_agg_weights_map)
-
-        # aggregate teacher
-        teacher_group_weights = self.aggregate_weights(
-            teacher_weights_map, teacher_agg_weights_map
-        )
-
-        sum_stu_agg = sum(
-            [student_agg_weights_map[idx] for idx in student_agg_weights_map]
-        )
-        sum_ta_agg = sum([ta_agg_weights_map[idx] for idx in ta_agg_weights_map])
-        sum_teacher_agg = sum(
-            [teacher_agg_weights_map[idx] for idx in teacher_agg_weights_map]
-        )
-
-        stu_acc = sum(student_accs) / len(student_accs)
-        ta_acc = sum(ta_accs) / len(ta_accs)
-        teacher_acc = sum(teacher_accs) / len(teacher_accs)
-
-        self.global_weight = self.aggregate_group_weights(
-            stu_weights=stu_group_weights,
-            ta_weights=ta_group_weights,
-            teacher_weights=teacher_group_weights,
-            stu_acc=stu_acc,
-            ta_acc=ta_acc,
-            teacher_acc=teacher_acc,
-            stu_agg=sum_stu_agg,
-            ta_agg=sum_ta_agg,
-            teacher_agg=sum_teacher_agg,
-        )
-
-        ta_protos = aggregate_protos(ta_protos, ta_label_sizes)
         teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+
+        global_protos = {}
+        for label in range(self.args.num_classes):
+            this_protos = [
+                protos[label] if label in protos else teacher_protos[label]
+                for protos in local_protos
+            ]
+            teacher_proto = teacher_protos[label]
+            dv = cal_protos_diff_vector(
+                this_protos, teacher_proto, device=self.args.device
+            )
+
+            this_label_cnts = [
+                this_label_sizes[label] for this_label_sizes in label_sizes
+            ]
+            label_cnts_sum = sum(this_label_cnts)
+            for idx in range(len(this_label_cnts)):
+                this_label_cnts[idx] /= label_cnts_sum
+
+            agg_weight = optimize_collaborate_vector(
+                dv, sin_growth(self.alpha, round, self.max_round), this_label_cnts
+            )
+            global_protos[label] = torch.zeros_like(
+                teacher_proto, device=self.args.device
+            )
+            for idx, protos in enumerate(this_protos):
+                global_protos[label] += agg_weight[idx] * this_protos[label]
+
         # update global protos
         for client in self.clients:
-            idx = client.idx
-            if idx in self.ta_clients or idx in self.teacher_clients:
-                client.update_global_protos(teacher_protos)
-            else:
-                client.update_global_protos(ta_protos)
+            client.update_global_protos(global_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
