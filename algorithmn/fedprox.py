@@ -85,6 +85,18 @@ class FedProxServer(FedServerBase):
                 "acc_avg2": acc_avg2,
             },
         )
+
+        if self.args.model_het:
+            self.analyze_hm_losses(
+                idx_clients,
+                local_losses,
+                local_acc1s,
+                local_acc2s,
+                result,
+                self.args.ta_clients,
+                self.args.teacher_clients,
+            )
+
         if self.writer is not None:
             self.writer.add_scalars("clients_acc1", acc1_dict, round)
             self.writer.add_scalars("clients_acc2", acc2_dict, round)

@@ -30,7 +30,7 @@ class FedTTSServer(FedServerBase):
     def aggregate_weights(self, weights_map, agg_weights_map):
         if len(weights_map) == 0:
             return None
-        agg_weights = [agg_weights_map[idx] for idx in agg_weights_map]
+        agg_weights = np.array([agg_weights_map[idx] for idx in agg_weights_map])
         weights = [weights_map[idx] for idx in weights_map]
         agg_weights /= sum(agg_weights)
         return aggregate_weights(weights, agg_weights, self.client_aggregatable_weights)
@@ -48,10 +48,8 @@ class FedTTSServer(FedServerBase):
         teacher_agg,
     ):
         new_agg_weights = F.softmax(
-            torch(
-                [stu_agg * stu_acc, ta_agg * ta_acc, teacher_agg * teacher_acc]
-                / (stu_agg + ta_agg + teacher_agg)
-            )
+            torch.tensor([stu_agg * stu_acc, ta_agg * ta_acc, teacher_agg * teacher_acc])
+            / (stu_agg + ta_agg + teacher_agg)
         )
         print(new_agg_weights)
         weights = [stu_weights, ta_weights, teacher_weights]
@@ -240,6 +238,7 @@ class FedTTSClient(FedClientBase):
             local_model,
             writer,
         )
+        self.mse_loss = torch.nn.MSELoss()
         self.label_cnts = self.label_distribution()
 
     def get_local_protos(self):
