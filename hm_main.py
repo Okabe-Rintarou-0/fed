@@ -103,7 +103,11 @@ if __name__ == "__main__":
     sub_dir_name = (
         f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}"
     )
+
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
+    i = 2
+    while os.path.exists(tensorboard_path):
+        tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name, f"_{i}")
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
