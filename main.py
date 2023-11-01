@@ -122,6 +122,10 @@ if __name__ == "__main__":
     if not os.path.exists(weights_dir):
         os.makedirs(weights_dir)
 
+    training_args_json = os.path.join(training_data_dir, "data.json")
+    with open(training_args_json, "w") as f:
+        f.write(json.dumps(args, indent=2))
+
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
 

@@ -137,6 +137,9 @@ class FedTTSServer(FedServerBase):
 
         global_protos = {}
         for label in range(self.args.num_classes):
+            if label not in teacher_protos:
+                continue
+
             this_protos = [
                 protos[label] if label in protos else teacher_protos[label]
                 for protos in local_protos
@@ -153,14 +156,13 @@ class FedTTSServer(FedServerBase):
             for idx in range(len(this_label_cnts)):
                 this_label_cnts[idx] /= label_cnts_sum
 
-            agg_weight = optimize_collaborate_vector(
-                dv, sin_growth(self.alpha, round, self.max_round), this_label_cnts
-            )
+            alpha = sin_growth(self.alpha, round, self.max_round)
+            agg_weight = optimize_collaborate_vector(dv, alpha, this_label_cnts)
             global_protos[label] = torch.zeros_like(
                 teacher_proto, device=self.args.device
             )
             for idx, protos in enumerate(this_protos):
-                global_protos[label] += agg_weight[idx] * this_protos[label]
+                global_protos[label] += agg_weight[idx] * protos
 
         # update global protos
         for client in self.clients:
