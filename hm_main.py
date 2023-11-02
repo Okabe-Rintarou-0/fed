@@ -47,6 +47,7 @@ FL_CLIENT = {
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
     "FedTTS": FedTTSClient,
+    "FedGen": FedGenClient,
 }
 
 FL_SERVER = {
@@ -61,6 +62,7 @@ FL_SERVER = {
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
     "FedTTS": FedTTSServer,
+    "FedGen": FedGenServer,
 }
 
 
@@ -188,6 +190,9 @@ if __name__ == "__main__":
                 local_model=local_model.to(args.device),
                 writer=writer,
             )
+
+            if idx in args.attackers:
+                client.train_loader.dataset.attack = True
 
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)

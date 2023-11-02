@@ -28,7 +28,7 @@ class FedGenServer(FedServerBase):
         self.global_weight = self.global_model.state_dict()
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
-        ).to(self.device)
+        ).to(args.device)
 
         for client in clients:
             client.generator = self.generator
@@ -84,7 +84,7 @@ class FedGenServer(FedServerBase):
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     output = client.local_model.classifier(gen_output)
-                    client_output = F.softmax(output, dim=1).clone().detach()
+                    client_output = output.clone().detach()
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
@@ -96,8 +96,8 @@ class FedGenServer(FedServerBase):
                 ######### get student loss ############
                 # student_output = self.global_model.classifier(gen_output)
                 # student_loss = F.kl_div(
-                #     F.softmax(student_output, dim=1),
-                #     F.softmax(teacher_logit, dim=1),
+                #     student_output,
+                #     teacher_logit, dim=1,
                 # )
                 loss = (
                     self.ensemble_alpha * teacher_loss
@@ -168,6 +168,18 @@ class FedGenServer(FedServerBase):
                 "acc_avg2": acc_avg2,
             },
         )
+
+        if self.args.model_het:
+            self.analyze_hm_losses(
+                idx_clients,
+                local_losses,
+                local_acc1s,
+                local_acc2s,
+                result,
+                self.args.ta_clients,
+                self.args.teacher_clients,
+            )
+
         if self.writer is not None:
             self.writer.add_scalars("clients_acc1", acc1_dict, round)
             self.writer.add_scalars("clients_acc2", acc2_dict, round)
@@ -230,7 +242,6 @@ class FedGenClient(FedClientBase):
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 _, output = model(images)
-                output = F.softmax(output, dim=1)
                 predictive_loss = self.criterion(output, labels)
 
                 generative_alpha = self.exp_lr_scheduler(
@@ -242,7 +253,7 @@ class FedGenClient(FedClientBase):
                 ### get generator output(latent representation) of the same label
                 gen_output, _ = self.generator(labels)
                 logit_given_gen = self.local_model.classifier(gen_output)
-                target_p = F.softmax(logit_given_gen, dim=1).clone().detach()
+                target_p = logit_given_gen.clone().detach()
                 latent_loss = generative_beta * self.ensemble_loss(output, target_p)
 
                 # compute teacher loss
@@ -252,7 +263,7 @@ class FedGenClient(FedClientBase):
                 )
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
-                output = F.softmax(self.local_model.classifier(gen_output), dim=1)
+                output = self.local_model.classifier(gen_output)
                 teacher_loss = generative_alpha * torch.mean(
                     self.generator.crossentropy_loss(output, sampled_y)
                 )

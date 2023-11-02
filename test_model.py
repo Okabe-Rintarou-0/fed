@@ -10,6 +10,10 @@ from models.generator import Generator
 from options import parse_args
 from torch import nn
 
+from sklearn.decomposition import KernelPCA
+
+import matplotlib.pyplot as plt
+
 from tools import (
     cal_dist_avg_difference_vector,
     cal_protos_diff_vector,
@@ -29,17 +33,34 @@ from sklearn.metrics.pairwise import linear_kernel
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    train_loaders, test_loaders = get_dataloaders(args)
-    stu, ta, te = get_models(args)
-    img, _ = next(iter(train_loaders[0]))
-    x, _ = stu(img)
-    y, _ = te(img)
-    t, _ = ta(img)
+    # args = parse_args()
+    # train_loaders, test_loaders = get_dataloaders(args)
+    # stu, ta, te = get_models(args)
+    # img, _ = next(iter(train_loaders[0]))
+    # x, _ = stu(img)
+    # y, _ = te(img)
+    # t, _ = ta(img)
 
-    protos = [x, y, t]
-    d = cal_protos_diff_vector(protos, y)
-    v = optimize_collaborate_vector(d, 0.5, [0.5, 0.5, 0.5])
-    cka = CKA(device="cpu")
-    c = cka.linear_CKA(x, y)
-    print(x.grad)
+    # protos = [x, y, t]
+    # d = cal_protos_diff_vector(protos, y)
+    # v = optimize_collaborate_vector(d, 0.5, [0.5, 0.5, 0.5])
+    # cka = CKA(device="cpu")
+    # c = cka.linear_CKA(torch.randn((2, 128)), torch.randn((2, 128)) * 0.0000015)
+    # print(c)
+    a = torch.ones(1, 128)
+    b = torch.ones(1, 128) * 0
+    c = torch.ones(1, 128) * (1 - 1e-20)
+    pca = KernelPCA(n_components=2, gamma=1)
+    pca = pca.fit_transform(torch.vstack([a, b, c]))
+    print(pca)
+    x = pca[:, 0]
+    y = pca[:, 1]
+
+    # 绘制散点图
+    plt.scatter(x, y, color="b", marker="o", label="Data Points")
+
+    # 设置图表标题和轴标签
+    plt.title("N×2 Matrix Plot")
+    plt.xlabel("X Axis")
+    plt.ylabel("Y Axis")
+    plt.show()

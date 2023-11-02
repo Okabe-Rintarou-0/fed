@@ -1,4 +1,5 @@
 from argparse import Namespace
+import random
 from typing import List, Tuple
 import numpy as np
 import torch
@@ -16,10 +17,11 @@ DATASET_PATH = "./data"
 
 
 class DatasetSplit(Dataset):
-    def __init__(self, dataset, index=None, get_index=False):
+    def __init__(self, dataset, index=None, get_index=False, attack=False):
         super().__init__()
         self.get_index = get_index
         self.dataset = dataset
+        self.attack = attack
         self.idxs = (
             [int(i) for i in index]
             if index is not None
@@ -31,6 +33,8 @@ class DatasetSplit(Dataset):
 
     def __getitem__(self, index):
         x, label = self.dataset[self.idxs[index]]
+        if self.attack:
+            label = random.randint(0, label)
         if self.get_index:
             return x, label, index
         return x, label

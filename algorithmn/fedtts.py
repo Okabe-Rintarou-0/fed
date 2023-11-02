@@ -2,6 +2,8 @@ from argparse import Namespace
 import copy
 import math
 from typing import List
+from sklearn.cluster import KMeans
+from sklearn.decomposition import KernelPCA
 from tensorboardX import SummaryWriter
 import torch
 from torch.utils.data import DataLoader
@@ -11,6 +13,7 @@ import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
+import matplotlib.pyplot as plt
 from tools import (
     aggregate_protos,
     aggregate_weights,
@@ -39,6 +42,67 @@ class FedTTSServer(FedServerBase):
         self.teacher_clients = args.teacher_clients
         self.alpha = args.alpha
         self.max_round = args.epochs
+        self.kpca = KernelPCA(n_components=2)
+
+    def plot_protos_kpca(self, idx_clients, local_protos, label_sizes):
+        for label in range(self.args.num_classes):
+            this_protos = [protos[label] for protos in local_protos if label in protos]
+            this_idx_clients = [
+                idx_clients[idx]
+                for (idx, protos) in enumerate(local_protos)
+                if label in protos
+            ]
+            this_label_sizes = [
+                label_sizes[idx][label]
+                for (idx, protos) in enumerate(local_protos)
+                if label in protos
+            ]
+            sum_this_label_sizes = sum(this_label_sizes)
+            for i in range(len(this_label_sizes)):
+                this_label_sizes[i] /= sum_this_label_sizes
+
+            this_protos = torch.vstack(this_protos).to("cpu")
+            pca = self.kpca.fit_transform(this_protos)
+            kmeans = KMeans(n_clusters=1, n_init="auto")
+            k = kmeans.fit(pca)
+            distances = k.transform(pca)
+            avg_distances = np.min(distances, axis=1).mean()
+
+            center = k.cluster_centers_[0]
+            circle = plt.Circle(
+                (center[0], center[1]), avg_distances, color="blue", alpha=0.3
+            )
+            plt.gca().add_patch(circle)
+            plt.scatter(x=center[0], y=center[1], label="center")
+            x = pca[:, 0]
+            y = pca[:, 1]
+
+            # for i in range(x.shape[0]):
+            #     x[i] = center[0] + (x[i] - center[0]) * this_label_sizes[i]
+            #     y[i] = center[1] + (y[i] - center[1]) * this_label_sizes[i]
+
+            benign_clients = list(range(x.shape[0]))
+            if len(self.args.attackers) > 0:
+                attackers = [
+                    i
+                    for (i, idx) in enumerate(this_idx_clients)
+                    if idx in self.args.attackers
+                ]
+                benign_clients = list(set(benign_clients) - set(attackers))
+                plt.scatter(x[attackers], y[attackers], label="attackers")
+
+            plt.scatter(x[benign_clients], y[benign_clients], label="benign clients")
+            plt.legend()
+            plt.show()
+
+            # c0 = [idx for (idx, label) in enumerate(k.labels_) if label == 0]
+            # c1 = [idx for (idx, label) in enumerate(k.labels_) if label == 1]
+
+            # plt.clf()
+            # plt.scatter(x[c0], y[c0], label='c0')
+            # plt.scatter(x[c1], y[c1], label='c1')
+            # plt.legend()
+            # plt.show()
 
     def aggregate_weights(self, weights_map, agg_weights_map):
         if len(weights_map) == 0:
@@ -126,8 +190,7 @@ class FedTTSServer(FedServerBase):
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
-        if self.args.attack:
-            self.do_attack()
+        self.plot_protos_kpca(idx_clients, teacher_protos, label_sizes)
 
         self.global_weight = aggregate_weights(
             local_weights, local_agg_weights, self.client_aggregatable_weights
@@ -157,10 +220,11 @@ class FedTTSServer(FedServerBase):
                 this_label_cnts[idx] /= label_cnts_sum
 
             alpha = sin_growth(self.alpha, round, self.max_round)
-            agg_weight = optimize_collaborate_vector(dv, alpha, this_label_cnts)
+            agg_weight = optimize_collaborate_vector(dv, self.alpha, this_label_cnts)
             global_protos[label] = torch.zeros_like(
                 teacher_proto, device=self.args.device
             )
+            print(agg_weight)
             for idx, protos in enumerate(this_protos):
                 global_protos[label] += agg_weight[idx] * protos
 
@@ -222,6 +286,7 @@ class FedTTSClient(FedClientBase):
         )
         self.mse_loss = torch.nn.MSELoss()
         self.label_cnts = self.label_distribution()
+        self.is_attacker = self.idx in args.attackers
 
     def get_local_protos(self):
         model = self.local_model
