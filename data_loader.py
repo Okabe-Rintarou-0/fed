@@ -55,18 +55,18 @@ class DatasetSplit(Dataset):
             [label for (idx, label) in enumerate(labels) if aug_num[idx] > 0]
         )
 
-        while len(rest_label_set) > 0:
-            for x, label in self.dataset:
-                if label not in rest_label_set:
-                    continue
+        for idx in self.idxs:
+            x, label = self.dataset[idx]
+            if label not in rest_label_set:
+                continue
 
-                x = aug_transform(x)
-                self.augment_set.append((x, label))
-                aug_cnt[label] += 1
-                if aug_cnt[label] == label_aug_num_map[label]:
-                    rest_label_set.remove(label)
-                    if len(rest_label_set) == 0:
-                        return
+            x = aug_transform(x)
+            self.augment_set.append((x, label))
+            aug_cnt[label] += 1
+            if aug_cnt[label] == label_aug_num_map[label]:
+                rest_label_set.remove(label)
+                if len(rest_label_set) == 0:
+                    return
 
     def __len__(self):
         return len(self.idxs) + len(self.augment_set)
