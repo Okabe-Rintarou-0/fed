@@ -96,6 +96,9 @@ def parse_args() -> argparse.Namespace:
         "--get_index", type=bool, default=False, help="Get index of loader"
     )
     parser.add_argument(
+        "--augment_percent", type=float, default=2, help="Augment percent"
+    )
+    parser.add_argument(
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
     parser.add_argument("--iter_num", type=int, default=0)

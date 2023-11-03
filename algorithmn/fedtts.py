@@ -12,6 +12,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
+from data_loader import AUG_MAP
 from models.base import FedModel
 import matplotlib.pyplot as plt
 from tools import (
@@ -43,6 +44,64 @@ class FedTTSServer(FedServerBase):
         self.alpha = args.alpha
         self.max_round = args.epochs
         self.kpca = KernelPCA(n_components=2)
+
+        self.augment_teacher()
+
+    def compute_avg_client_label_cnts(self):
+        num_labels = self.args.num_classes
+        print([
+                sum(
+                    [
+                        self.clients[t_idx].label_cnts[label]
+                        for t_idx in self.teacher_clients
+                    ]
+                )
+                for label in range(num_labels)
+            ])
+        label_avg_cnts = sum(
+            [
+                sum(
+                    [
+                        self.clients[t_idx].label_cnts[label]
+                        for t_idx in self.teacher_clients
+                    ]
+                )
+                for label in range(num_labels)
+            ]
+        ) // (len(self.teacher_clients) * num_labels)
+        return label_avg_cnts
+
+    def augment_teacher(self):
+        if len(self.teacher_clients) == 0:
+            return
+
+        num_labels = self.args.num_classes
+        aug_percent = self.args.augment_percent
+        label_avg_cnts = self.compute_avg_client_label_cnts()
+
+        print("before augment:", label_avg_cnts)
+
+        for t_idx in self.teacher_clients:
+            teacher: FedTTSClient = self.clients[t_idx]
+            labels_to_aug = []
+            labels_aug_num = []
+            for label in range(num_labels):
+                my_labels = teacher.label_cnts[label]
+                if my_labels < label_avg_cnts:
+                    to_aug = min(
+                        label_avg_cnts - my_labels, int(my_labels * aug_percent)
+                    )
+                    labels_to_aug.append(label)
+                    labels_aug_num.append(to_aug)
+
+            print(labels_to_aug, labels_aug_num)
+            teacher.train_loader.dataset.do_augment(
+                labels_to_aug, labels_aug_num, AUG_MAP[self.args.dataset]
+            )
+            teacher.label_cnts = teacher.label_distribution()
+
+        label_avg_cnts = self.compute_avg_client_label_cnts()
+        print("after augment:", label_avg_cnts)
 
     def plot_protos_kpca(self, idx_clients, local_protos, label_sizes):
         for label in range(self.args.num_classes):
@@ -343,7 +402,7 @@ class FedTTSClient(FedClientBase):
                             protos_new[i] = local_protos1[yi].detach()
                     loss1 = self.mse_loss(protos_new, protos)
 
-                loss2 = protos.norm(dim=1)
+                loss2 = protos.norm(dim=1).mean()
                 loss = loss0 + self.args.lam * loss1 + self.args.l2r_coeff * loss2
                 loss.backward()
                 optimizer.step()
