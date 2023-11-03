@@ -101,6 +101,8 @@ class FedServerBase:
         self.clients = clients
         self.writer = writer
 
+        self.device = args.device
+
     @staticmethod
     def analyze_hm_losses(
         client_idxs,

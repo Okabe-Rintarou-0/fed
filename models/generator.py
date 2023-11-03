@@ -60,9 +60,12 @@ class Generator(nn.Module):
         eps = torch.rand(
             (batch_size, self.noise_dim), device=labels.device
         )  # sampling from Gaussian
-        y_input = torch.FloatTensor(batch_size, self.n_class).to(labels.device)
-        y_input.zero_()
-        y_input.scatter_(1, labels.view(-1, 1), 1)
+        if len(labels.shape) == 1:
+            y_input = torch.FloatTensor(batch_size, self.n_class).to(labels.device)
+            y_input.zero_()
+            y_input.scatter_(1, labels.view(-1, 1), 1)
+        else:
+            y_input = labels
         z = torch.cat((eps, y_input), dim=1)
         ### FC layers
         for layer in self.fc_layers:

@@ -126,6 +126,7 @@ class FedGenServer(FedServerBase):
         acc2_dict = {}
         loss_dict = {}
 
+        self.selected_clients = []
         for idx in idx_clients:
             local_client: FedGenClient = self.clients[idx]
             self.selected_clients.append(local_client)
