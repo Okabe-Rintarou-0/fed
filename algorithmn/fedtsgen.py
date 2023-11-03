@@ -305,8 +305,9 @@ class FedTSGenClient(FedClientBase):
         ]
         avg_label_cnts = int(np.mean(label_cnts_list).item())
         self.unqualified_labels = [
-            self.label_cnts[label] < avg_label_cnts
+            label
             for label in range(self.available_labels)
+            if self.label_cnts[label] < avg_label_cnts
         ]
         self.gen_batch_size = self.args.gen_batch_size
         print(f"client {self.idx} label distribution: {self.label_cnts}")
