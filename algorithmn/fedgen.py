@@ -107,7 +107,7 @@ class FedGenServer(FedServerBase):
                 self.generative_optimizer.step()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f"\n---- FedAvg Global Communication Round : {round} ----")
+        print(f"\n---- FedGen Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if round >= self.args.epochs:

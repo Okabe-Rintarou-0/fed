@@ -190,7 +190,7 @@ class FedTTSServer(FedServerBase):
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
-        self.plot_protos_kpca(idx_clients, teacher_protos, label_sizes)
+        # self.plot_protos_kpca(idx_clients, teacher_protos, label_sizes)
 
         self.global_weight = aggregate_weights(
             local_weights, local_agg_weights, self.client_aggregatable_weights
@@ -342,7 +342,9 @@ class FedTTSClient(FedClientBase):
                         else:
                             protos_new[i] = local_protos1[yi].detach()
                     loss1 = self.mse_loss(protos_new, protos)
-                loss = loss0 + self.args.lam * loss1
+
+                loss2 = protos.norm(dim=1)
+                loss = loss0 + self.args.lam * loss1 + self.l2r_coeff * loss2
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())

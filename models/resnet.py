@@ -51,7 +51,7 @@ class ResNetBase(FedModel):
         x = self.backbone(x)
 
         if not self.probabilistic:
-            z = x
+            z = F.leaky_relu(x)
         else:
             z_params = x
             z_mu = z_params[:, : self.z_dim]

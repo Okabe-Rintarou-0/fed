@@ -7,6 +7,7 @@ from data_loader import get_dataloaders, get_model, get_models
 from datasets import RotatedMNIST
 from models.cnn import PACSCNN, CifarCNN, ComplexCNN
 from models.generator import Generator
+from models.resnet import CifarResNet
 from options import parse_args
 from torch import nn
 
@@ -47,20 +48,22 @@ if __name__ == "__main__":
     # cka = CKA(device="cpu")
     # c = cka.linear_CKA(torch.randn((2, 128)), torch.randn((2, 128)) * 0.0000015)
     # print(c)
-    a = torch.ones(1, 128)
-    b = torch.ones(1, 128) * 0
-    c = torch.ones(1, 128) * (1 - 1e-20)
-    pca = KernelPCA(n_components=2, gamma=1)
-    pca = pca.fit_transform(torch.vstack([a, b, c]))
-    print(pca)
-    x = pca[:, 0]
-    y = pca[:, 1]
+    m = CifarResNet(num_classes=10)
+    print(m)
+    # a = torch.ones(1, 128)
+    # b = torch.ones(1, 128) * 0
+    # c = torch.ones(1, 128) * (1 - 1e-20)
+    # pca = KernelPCA(n_components=2, gamma=1)
+    # pca = pca.fit_transform(torch.vstack([a, b, c]))
+    # print(pca)
+    # x = pca[:, 0]
+    # y = pca[:, 1]
 
-    # 绘制散点图
-    plt.scatter(x, y, color="b", marker="o", label="Data Points")
+    # # 绘制散点图
+    # plt.scatter(x, y, color="b", marker="o", label="Data Points")
 
-    # 设置图表标题和轴标签
-    plt.title("N×2 Matrix Plot")
-    plt.xlabel("X Axis")
-    plt.ylabel("Y Axis")
-    plt.show()
+    # # 设置图表标题和轴标签
+    # plt.title("N×2 Matrix Plot")
+    # plt.xlabel("X Axis")
+    # plt.ylabel("Y Axis")
+    # plt.show()
