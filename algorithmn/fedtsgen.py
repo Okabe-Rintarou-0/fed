@@ -96,7 +96,7 @@ class FedTSGenServer(FedServerBase):
         label_weights = np.array(label_weights).reshape((self.unique_labels, -1))
         return label_weights, qualified_labels
 
-    def train_generator(self, epoches=1, n_teacher_iters=5):
+    def train_generator(self, epoches=1, n_teacher_iters=20):
         print("Training generator...", end="")
         self.generator.train()
         self.global_model.eval()
@@ -135,9 +135,10 @@ class FedTSGenServer(FedServerBase):
                 #     student_output,
                 #     teacher_logit, dim=1,
                 # )
+                lr2_loss = gen_output.norm(dim=1).mean()
                 loss = (
-                    self.ensemble_alpha
-                    * teacher_loss
+                    self.ensemble_alpha * teacher_loss
+                    + self.args.l2r_coeff * lr2_loss
                     # + self.ensemble_beta * student_loss
                     # + self.ensemble_eta * diversity_loss
                 )
@@ -358,12 +359,12 @@ class FedTSGenClient(FedClientBase):
                 loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
                 gen_ratio = self.gen_batch_size / self.args.local_bs
 
-                loss3 = protos.norm(dim=1).mean()
+                # loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
                     + self.args.lam * loss1
                     + gen_ratio * loss2
-                    + self.args.l2r_coeff * loss3
+                    # + self.args.l2r_coeff * loss3
                 )
                 loss.backward()
                 optimizer.step()

@@ -71,7 +71,7 @@ class Generator(nn.Module):
         for layer in self.fc_layers:
             z = layer(z)
         z = self.representation_layer(z)
-
+        z = F.leaky_relu(z)
         return z, eps
 
 
