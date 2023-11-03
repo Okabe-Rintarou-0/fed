@@ -83,8 +83,7 @@ class FedGenServer(FedServerBase):
                     client.local_model.eval()
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
-                    output = client.local_model.classifier(gen_output)
-                    client_output = output.clone().detach()
+                    client_output = client.local_model.classifier(gen_output)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
