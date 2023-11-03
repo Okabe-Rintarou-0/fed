@@ -85,7 +85,6 @@ def read_training_data(training_data_json):
     with open(training_data_json, "r") as f:
         return json.loads(f.read())
 
-
 if __name__ == "__main__":
     args = parse_args()
     train_loaders, test_loaders = get_dataloaders(args)

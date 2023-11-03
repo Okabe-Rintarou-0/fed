@@ -1,4 +1,5 @@
 from argparse import Namespace
+import json
 import random
 from typing import List, Tuple
 import numpy as np
@@ -511,6 +512,41 @@ def rmnist(
         batch_size=batch_size,
         get_index=get_index,
     )
+
+
+def read_client_idxs_from_json(json_path: str):
+    with open(json_path, "r") as f:
+        client_idxs = json.loads(f.read())
+        return client_idxs
+
+
+def get_dataloaders_from_json(
+    args: Namespace, train_json_path: str, test_json_path: str
+) -> Tuple[List[DataLoader], List[DataLoader]]:
+    dataset = args.dataset
+    local_bs = args.local_bs
+    get_index = args.get_index
+    if dataset in ["cifar", "cifar10"]:
+        trainset, testset = cifar10_dataset()
+    else:
+        raise NotImplementedError()
+    train_loaders = gen_data_loaders(
+        trainset,
+        read_client_idxs_from_json(train_json_path),
+        local_bs,
+        True,
+        get_index,
+    )
+
+    test_loaders = gen_data_loaders(
+        testset,
+        read_client_idxs_from_json(test_json_path),
+        local_bs,
+        False,
+        get_index,
+    )
+
+    return train_loaders, test_loaders
 
 
 # get_dataloaders returns train and test dataloader of given dataset

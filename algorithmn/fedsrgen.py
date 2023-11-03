@@ -82,9 +82,7 @@ class FedSRGenServer(FedServerBase):
                     client.local_model.eval()
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
-                    client.local_model.to(self.device)
-                    output = client.local_model.classifier(gen_output)
-                    client_output = F.softmax(output, dim=1)
+                    client_output = client.local_model.classifier(gen_output)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
@@ -93,7 +91,6 @@ class FedSRGenServer(FedServerBase):
                     teacher_logit += client_output * torch.tensor(
                         expand_weight, dtype=torch.float32, device=self.device
                     )
-                    client.clear_memory()
                 ######### get student loss ############
                 # student_output = self.global_model.classifier(gen_output)
                 # student_loss = F.kl_div(
@@ -235,7 +232,6 @@ class FedSRGenClient(FedClientBase):
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 z, output, (z_mu, z_sigma) = model(images, return_dist=True)
-                output = F.softmax(output, dim=1)
                 predictive_loss = self.criterion(output, labels)
 
                 generative_alpha = self.exp_lr_scheduler(
@@ -247,8 +243,7 @@ class FedSRGenClient(FedClientBase):
                 ### get generator output(latent representation) of the same label
                 gen_output, (r_mu, r_sigma) = self.generator(labels)
                 logit_given_gen = self.local_model.classifier(gen_output)
-                target_p = F.softmax(logit_given_gen, dim=1).clone().detach()
-                latent_loss = generative_beta * self.ensemble_loss(output, target_p)
+                latent_loss = generative_beta * self.ensemble_loss(output, logit_given_gen)
 
                 ### compute l2 reg
                 l2_reg_loss = z.norm(dim=1).mean()
@@ -269,7 +264,7 @@ class FedSRGenClient(FedClientBase):
                 )
                 gen_output, _ = self.generator(sampled_y)
                 # latent representation when latent = True, x otherwise
-                output = F.softmax(self.local_model.classifier(gen_output), dim=1)
+                output = self.local_model.classifier(gen_output)
                 teacher_loss = generative_alpha * torch.mean(
                     self.generator.crossentropy_loss(output, sampled_y)
                 )

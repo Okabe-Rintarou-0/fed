@@ -366,6 +366,9 @@ class FedTSGenClient(FedClientBase):
                     + gen_ratio * loss2
                     # + self.args.l2r_coeff * loss3
                 )
+                print(loss0, loss1, loss2)
+                if torch.isnan(loss).any():
+                    exit(-1)
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())

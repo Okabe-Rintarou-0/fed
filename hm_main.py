@@ -22,6 +22,7 @@ from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 
 from data_loader import (
     get_dataloaders,
+    get_dataloaders_from_json,
     get_models,
 )
 from options import parse_args
@@ -72,9 +73,20 @@ def read_training_data(training_data_json):
         return json.loads(f.read())
 
 
+LOADER_PATH_MAP = {
+    "cifar": {
+        "train": "./train_cfg/train_client_20_dirichlet.json",
+        "test": "./train_cfg/test_client_20_dirichlet.json",
+    }
+}
+
 if __name__ == "__main__":
     args = parse_args()
-    train_loaders, test_loaders = get_dataloaders(args)
+    dataset = args.dataset
+    train_loaders, test_loaders = get_dataloaders_from_json(
+        args, LOADER_PATH_MAP[dataset]["train"], LOADER_PATH_MAP[dataset]["test"]
+    )
+    # train_loaders, test_loaders = get_dataloaders(args)
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
