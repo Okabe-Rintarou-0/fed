@@ -344,7 +344,7 @@ class FedTTSClient(FedClientBase):
                     loss1 = self.mse_loss(protos_new, protos)
 
                 loss2 = protos.norm(dim=1)
-                loss = loss0 + self.args.lam * loss1 + self.l2r_coeff * loss2
+                loss = loss0 + self.args.lam * loss1 + self.args.l2r_coeff * loss2
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())
