@@ -118,17 +118,17 @@ class FedTSGenServer(FedServerBase):
             for _ in range(n_teacher_iters):
                 self.generator.zero_grad()
                 y = np.random.choice(self.qualified_labels, local_bs)
-                y2 = np.random.choice(self.qualified_labels, local_bs)
+                # y2 = np.random.choice(self.qualified_labels, local_bs)
                 y_input = F.one_hot(
                     torch.LongTensor(y).to(self.device), self.unique_labels
                 ).float()
-                y_input2 = F.one_hot(
-                    torch.LongTensor(y2).to(self.device), self.unique_labels
-                ).float()
-                lam = torch.rand(local_bs, 1).to(self.device)
-                mixup = lam * y_input + (1 - lam) * y_input2
+                # y_input2 = F.one_hot(
+                #     torch.LongTensor(y2).to(self.device), self.unique_labels
+                # ).float()
+                # lam = torch.rand(local_bs, 1).to(self.device)
+                # mixup = lam * y_input + (1 - lam) * y_input2
                 gen_output, _ = self.generator(y_input)
-                gen_output2, _ = self.generator(mixup)
+                # gen_output2, _ = self.generator(mixup)
                 # diversity_loss = self.generator.diversity_loss(eps, gen_output)
                 ######### get teacher loss ############
                 teacher_loss = 0
@@ -136,21 +136,22 @@ class FedTSGenServer(FedServerBase):
                 for client_idx, client in enumerate(selected_teachers):
                     client.local_model.eval()
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
-                    weight2 = self.label_weights[y][:, client_idx].reshape(-1, 1)
+                    # weight2 = self.label_weights[y2][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     client_output = client.local_model.classifier(gen_output)
-                    client_output2 = client.local_model.classifier(gen_output2)
+                    # client_output2 = client.local_model.classifier(gen_output2)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
                     )
-                    mixup_teacher_loss_ = torch.mean(
-                        self.generator.crossentropy_loss(client_output2, mixup)
-                        * torch.tensor(
-                            weight * weight2, dtype=torch.float32, device=self.device
-                        )
-                    )
-                    teacher_loss += teacher_loss_ + mixup_teacher_loss_
+                    # mixup_teacher_loss_ = torch.mean(
+                    #     self.generator.crossentropy_loss(client_output2, mixup)
+                    #     * torch.tensor(
+                    #         weight * weight2, dtype=torch.float32, device=self.device
+                    #     )
+                    # )
+                    teacher_loss += teacher_loss_
+                    # teacher_loss += teacher_loss_ + mixup_teacher_loss_
                     teacher_logit += client_output * torch.tensor(
                         expand_weight, dtype=torch.float32, device=self.device
                     )
