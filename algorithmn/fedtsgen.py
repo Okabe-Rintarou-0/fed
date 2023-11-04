@@ -86,12 +86,12 @@ class FedTSGenServer(FedServerBase):
         ) // (len(self.teacher_clients) * num_labels)
         return label_avg_cnts
 
-    def get_label_weights(self):
+    def get_label_weights(self, selected_teachers):
         label_weights = []
         qualified_labels = []
         for label in range(self.unique_labels):
             weights = []
-            for client in self.selected_clients:
+            for client in selected_teachers:
                 weights.append(client.label_cnts[label])
             if np.max(weights) > 1:
                 qualified_labels.append(label)
@@ -104,32 +104,45 @@ class FedTSGenServer(FedServerBase):
         print("Training generator...", end="")
         self.generator.train()
         self.global_model.eval()
-        self.label_weights, self.qualified_labels = self.get_label_weights()
         selected_teachers = [
             client
             for client in self.selected_clients
             if client.idx in self.teacher_clients
         ]
+        self.label_weights, self.qualified_labels = self.get_label_weights()
+        
+        local_bs = self.args.local_bs
         for _ in range(epoches):
             for _ in range(n_teacher_iters):
                 self.generator.zero_grad()
-                y = np.random.choice(self.qualified_labels, self.args.local_bs)
+                y = np.random.choice(self.qualified_labels, local_bs)
+                y2 = np.random.choice(self.qualified_labels, local_bs)
                 y_input = torch.LongTensor(y).to(self.device)
-                gen_output, eps = self.generator(y_input)
+                y_input2 = torch.LongTensor(y2).to(self.device)
+                lam = torch.rand(local_bs, 1).to(self.device)
+                mixup = lam * y_input + (1 - lam) * y_input2
+                gen_output, _ = self.generator(y_input)
+                gen_output2, _ = self.generator(mixup)
                 # diversity_loss = self.generator.diversity_loss(eps, gen_output)
                 ######### get teacher loss ############
                 teacher_loss = 0
                 teacher_logit = 0
                 for client_idx, client in enumerate(selected_teachers):
                     client.local_model.eval()
-                    weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
+                    weight = self.label_weights[y][:, client_idx].reshape(-1, 1) 
+                    weight2 = self.label_weights[y][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     client_output = client.local_model.classifier(gen_output)
+                    client_output2 = client.local_model.classifier(gen_output2)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
                     )
-                    teacher_loss += teacher_loss_
+                    mixup_teacher_loss_ = torch.mean(
+                        self.generator.crossentropy_loss(client_output2, mixup)
+                        * torch.tensor(weight * weight2, dtype=torch.float32, device=self.device)
+                    )
+                    teacher_loss += teacher_loss_ + mixup_teacher_loss_
                     teacher_logit += client_output * torch.tensor(
                         expand_weight, dtype=torch.float32, device=self.device
                     )
@@ -178,24 +191,9 @@ class FedTSGenServer(FedServerBase):
                 labels_to_aug, labels_aug_num, AUG_MAP[self.args.dataset]
             )
             teacher.label_cnts = teacher.label_distribution()
-            teacher.label_div = sum(
-                [
-                    1
-                    for label in range(self.args.num_classes)
-                    if self.label_cnts[label] > 0
-                ]
-            )
 
         label_avg_cnts = self.compute_avg_client_label_cnts()
         print("after augment:", label_avg_cnts)
-
-    def aggregate_weights(self, weights_map, agg_weights_map):
-        if len(weights_map) == 0:
-            return None
-        agg_weights = np.array([agg_weights_map[idx] for idx in agg_weights_map])
-        weights = [weights_map[idx] for idx in weights_map]
-        agg_weights /= sum(agg_weights)
-        return aggregate_weights(weights, agg_weights, self.client_aggregatable_weights)
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedTSGen Global Communication Round : {round} ----")
@@ -275,33 +273,35 @@ class FedTSGenServer(FedServerBase):
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
-        teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+        # teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
 
-        dv = torch.zeros((len(idx_clients)))
-        for label in range(self.args.num_classes):
-            if label not in teacher_protos:
-                continue
+        # dv = torch.zeros((len(idx_clients)))
+        # for label in range(self.args.num_classes):
+        #     if label not in teacher_protos:
+        #         continue
 
-            this_protos = [
-                protos[label] if label in protos else teacher_protos[label]
-                for protos in local_protos
-            ]
-            teacher_proto = teacher_protos[label]
-            dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
+        #     this_protos = [
+        #         protos[label] if label in protos else teacher_protos[label]
+        #         for protos in local_protos
+        #     ]
+        #     teacher_proto = teacher_protos[label]
+        #     dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
 
-        for i, client in enumerate(self.selected_clients):
-            dv[i] /= client.label_div
-        print(dv)
+        # dv /= self.args.num_classes
+        # print(dv)
 
-        sum_agg_weights = sum(local_agg_weights)
-        for i in range(len(idx_clients)):
-            local_agg_weights[i] /= sum_agg_weights
-        alpha = sin_growth(self.alpha, round, self.max_round)
-        agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
-        print(agg_weight, local_agg_weights)
+        # sum_agg_weights = sum(local_agg_weights)
+        # for i in range(len(idx_clients)):
+        #     local_agg_weights[i] /= sum_agg_weights
+        # alpha = sin_growth(self.alpha, round, self.max_round)
+        # agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
+        # print(agg_weight, local_agg_weights)
 
+        # self.global_weight = aggregate_weights(
+        #     local_weights, agg_weight, self.client_aggregatable_weights
+        # )
         self.global_weight = aggregate_weights(
-            local_weights, agg_weight, self.client_aggregatable_weights
+            local_weights, local_agg_weights, self.client_aggregatable_weights
         )
 
         self.train_generator()
@@ -375,9 +375,6 @@ class FedTSGenClient(FedClientBase):
         print(f"client {self.idx} label distribution: {self.label_cnts}")
         print(f"client {self.idx} unqualified labels: {self.unqualified_labels}")
         self.is_attacker = self.idx in args.attackers
-        self.label_div = sum(
-            [1 for label in range(args.num_classes) if self.label_cnts[label] > 0]
-        )
 
     def get_local_protos(self):
         model = self.local_model
