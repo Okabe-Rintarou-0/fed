@@ -96,11 +96,12 @@ if __name__ == "__main__":
 
     y = np.random.choice(list(range(10)), 32)
     y2 = np.random.choice(list(range(10)), 32)
-    y_input = F.one_hot(torch.LongTensor(y), 10)
-    y_input2 = F.one_hot(torch.LongTensor(y2), 10)
+    y_input = F.one_hot(torch.LongTensor(y), 10).float()
+    y_input2 = F.one_hot(torch.LongTensor(y2), 10).float()
     print(y_input.shape, y_input2.shape)
     lam = torch.rand(32, 1)
     mixup = lam * y_input + (1 - lam) * y_input2
     print(mixup)
+    F.cross_entropy(torch.rand((y.shape[0], 10)), y_input)
 
     print(np.array([1, 2]) * np.array([1, 2]))

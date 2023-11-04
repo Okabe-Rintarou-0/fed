@@ -121,10 +121,10 @@ class FedTSGenServer(FedServerBase):
                 y2 = np.random.choice(self.qualified_labels, local_bs)
                 y_input = F.one_hot(
                     torch.LongTensor(y).to(self.device), self.unique_labels
-                )
+                ).float()
                 y_input2 = F.one_hot(
                     torch.LongTensor(y2).to(self.device), self.unique_labels
-                )
+                ).float()
                 lam = torch.rand(local_bs, 1).to(self.device)
                 mixup = lam * y_input + (1 - lam) * y_input2
                 gen_output, _ = self.generator(y_input)
