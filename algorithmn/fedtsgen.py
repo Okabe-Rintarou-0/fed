@@ -17,7 +17,11 @@ from models.base import FedModel
 import matplotlib.pyplot as plt
 from models.generator import Generator
 from tools import (
+    aggregate_protos,
     aggregate_weights,
+    cal_protos_diff_vector,
+    get_protos,
+    optimize_collaborate_vector,
 )
 
 
@@ -207,7 +211,20 @@ class FedTSGenServer(FedServerBase):
         acc1_dict = {}
         acc2_dict = {}
         loss_dict = {}
+
+        student_agg_weights_map = {}
+        student_weights_map = {}
+        student_accs = []
+        student_protos = []
+        student_label_sizes = []
+
         label_sizes = []
+
+        teacher_agg_weights_map = {}
+        teacher_weights_map = {}
+        teacher_accs = []
+        teacher_protos = []
+        teacher_label_sizes = []
         self.selected_clients = []
         for idx in idx_clients:
             local_client: FedTSGenClient = self.clients[idx]
@@ -238,8 +255,39 @@ class FedTSGenServer(FedServerBase):
             local_protos.append(protos)
             label_sizes.append(label_cnts)
 
+            if idx in self.teacher_clients:
+                teacher_agg_weights_map[idx] = agg_weight
+                teacher_weights_map[idx] = weights
+                teacher_accs.append(local_acc2)
+                teacher_protos.append(protos)
+                teacher_label_sizes.append(label_cnts)
+            else:
+                student_agg_weights_map[idx] = agg_weight
+                student_weights_map[idx] = weights
+                student_accs.append(local_acc2)
+                student_protos.append(protos)
+                student_label_sizes.append(label_cnts)
+
+        teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+
+        dv = torch.zeros((len(idx_clients)))
+        for label in range(self.args.num_classes):
+            if label not in teacher_protos:
+                continue
+
+            this_protos = [
+                protos[label] if label in protos else teacher_protos[label]
+                for protos in local_protos
+            ]
+            teacher_proto = teacher_protos[label]
+            dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
+        dv /= self.args.num_classes
+        # alpha = sin_growth(self.alpha, round, self.max_round)
+        agg_weight = optimize_collaborate_vector(dv, self.alpha, local_agg_weights)
+        print(agg_weight)
+
         self.global_weight = aggregate_weights(
-            local_weights, local_agg_weights, self.client_aggregatable_weights
+            local_weights, agg_weight, self.client_aggregatable_weights
         )
 
         self.train_generator()
@@ -314,6 +362,21 @@ class FedTSGenClient(FedClientBase):
         print(f"client {self.idx} unqualified labels: {self.unqualified_labels}")
         self.is_attacker = self.idx in args.attackers
 
+    def get_local_protos(self):
+        model = self.local_model
+        local_protos_list = {}
+        for inputs, labels in self.train_loader:
+            inputs, labels = inputs.to(self.device), labels.to(self.device)
+            features, _ = model(inputs)
+            protos = features.clone().detach()
+            for i in range(len(labels)):
+                if labels[i].item() in local_protos_list.keys():
+                    local_protos_list[labels[i].item()].append(protos[i, :])
+                else:
+                    local_protos_list[labels[i].item()] = [protos[i, :]]
+        local_protos = get_protos(local_protos_list)
+        return local_protos
+
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model
@@ -366,7 +429,6 @@ class FedTSGenClient(FedClientBase):
                     + gen_ratio * loss2
                     # + self.args.l2r_coeff * loss3
                 )
-                print(loss0, loss1, loss2)
                 if torch.isnan(loss).any():
                     exit(-1)
                 loss.backward()
@@ -375,6 +437,7 @@ class FedTSGenClient(FedClientBase):
 
         acc2 = self.local_test()
 
+        result.protos = self.get_local_protos()
         result.weights = model.state_dict()
         result.acc_map["acc1"] = acc1
         result.acc_map["acc2"] = acc2
