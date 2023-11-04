@@ -332,6 +332,7 @@ class FedTTSServer(FedServerBase):
         teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
 
         global_protos = {}
+
         for label in range(self.args.num_classes):
             if label not in teacher_protos:
                 continue
@@ -343,6 +344,9 @@ class FedTTSServer(FedServerBase):
             teacher_proto = teacher_protos[label]
             dv = cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
 
+            for i, client in enumerate(self.selected_clients):
+                dv[i] /= client.label_div
+
             this_label_cnts = [
                 this_label_sizes[label] for this_label_sizes in label_sizes
             ]
@@ -351,7 +355,7 @@ class FedTTSServer(FedServerBase):
                 this_label_cnts[idx] /= label_cnts_sum
 
             alpha = sin_growth(self.alpha, round, self.max_round)
-            agg_weight = optimize_collaborate_vector(dv, self.alpha, this_label_cnts)
+            agg_weight = optimize_collaborate_vector(dv, alpha, this_label_cnts)
             global_protos[label] = torch.zeros_like(teacher_proto, device=self.device)
             print(agg_weight)
             for idx, protos in enumerate(this_protos):
@@ -418,6 +422,10 @@ class FedTTSClient(FedClientBase):
         self.mse_loss = torch.nn.MSELoss()
         self.label_cnts = self.label_distribution()
         self.is_attacker = self.idx in args.attackers
+
+        self.label_div = sum(
+            [1 for label in range(args.num_classes) if self.label_cnts[label] > 0]
+        )
 
     def get_local_protos(self):
         model = self.local_model

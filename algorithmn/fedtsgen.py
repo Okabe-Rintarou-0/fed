@@ -281,7 +281,10 @@ class FedTSGenServer(FedServerBase):
             ]
             teacher_proto = teacher_protos[label]
             dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
-        dv /= self.args.num_classes
+
+        for i, client in enumerate(self.selected_clients):
+            dv[i] /= client.label_div
+        print(dv)
 
         sum_agg_weights = sum(local_agg_weights)
         for i in range(len(idx_clients)):
@@ -365,6 +368,9 @@ class FedTSGenClient(FedClientBase):
         print(f"client {self.idx} label distribution: {self.label_cnts}")
         print(f"client {self.idx} unqualified labels: {self.unqualified_labels}")
         self.is_attacker = self.idx in args.attackers
+        self.label_div = sum(
+            [1 for label in range(args.num_classes) if self.label_cnts[label] > 0]
+        )
 
     def get_local_protos(self):
         model = self.local_model

@@ -48,8 +48,8 @@ if __name__ == "__main__":
     # cka = CKA(device="cpu")
     # c = cka.linear_CKA(torch.randn((2, 128)), torch.randn((2, 128)) * 0.0000015)
     # print(c)
-    m = CifarResNet(num_classes=10)
-    print(m)
+    # m = CifarResNet(num_classes=10)
+    # print(m)
     # a = torch.ones(1, 128)
     # b = torch.ones(1, 128) * 0
     # c = torch.ones(1, 128) * (1 - 1e-20)
@@ -67,3 +67,29 @@ if __name__ == "__main__":
     # plt.xlabel("X Axis")
     # plt.ylabel("Y Axis")
     # plt.show()
+
+    dv = [
+        -0.7474,
+        -0.7439,
+        -0.8306,
+        -0.6384,
+        -0.7246,
+        -0.8268,
+        -0.7689,
+        -0.5976,
+        -0.9209,
+        -0.7316,
+        -0.6427,
+        -0.7920,
+        -0.9127,
+        -0.6835,
+        -0.6927,
+        -0.6472,
+        -0.63348,
+        -0.8200,
+        -0.6470,
+        -0.7392,
+    ]
+
+    agg = optimize_collaborate_vector(torch.tensor(dv), 0.3, torch.ones(20) / 20)
+    print(agg)
