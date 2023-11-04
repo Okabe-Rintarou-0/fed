@@ -12,7 +12,7 @@ from models.base import FedModel
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
 from models.mlp import MNISTMLP, CifarMLP
-from models.resnet import CifarResNet, MNISTResNet, PACSResNet
+from models.resnet import CifarResNet, MNISTResNet, PACSResNet, RMNISTResNet
 
 DATASET_PATH = "./data"
 
@@ -96,7 +96,10 @@ def gen_data_loaders(
     for client_idx in client_idxs:
         splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)
         dataloader = DataLoader(
-            dataset=splitted_dataset, batch_size=batch_size, shuffle=shuffle
+            dataset=splitted_dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=True,
         )
         dataloaders.append(dataloader)
     return dataloaders
@@ -669,7 +672,7 @@ def get_model(args: Namespace) -> nn.Module:
             z_dim=z_dim,
         )
     elif dataset == "rmnist":
-        global_model = MNISTResNet(
+        global_model = RMNISTResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,

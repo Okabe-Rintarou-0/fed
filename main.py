@@ -85,6 +85,7 @@ def read_training_data(training_data_json):
     with open(training_data_json, "r") as f:
         return json.loads(f.read())
 
+
 if __name__ == "__main__":
     args = parse_args()
     train_loaders, test_loaders = get_dataloaders(args)
@@ -123,7 +124,8 @@ if __name__ == "__main__":
 
     training_args_json = os.path.join(training_data_dir, "data.json")
     with open(training_args_json, "w") as f:
-        f.write(json.dumps(args, indent=2))
+        args_dict = vars(args)
+        f.write(json.dumps(args_dict, indent=2))
 
     if train_rule not in FL_CLIENT or train_rule not in FL_SERVER:
         raise NotImplementedError()
