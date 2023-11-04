@@ -150,14 +150,8 @@ if __name__ == "__main__":
     client_idxs = list(range(args.num_clients))
 
     client_idx_set = set(client_idxs)
-    ta_num = int(args.ta_percent * args.num_clients)
-    ta_clients = random.sample(list(client_idx_set), ta_num)
-    args.ta_clients = ta_clients
-    print("ta clients:", ta_clients)
-
-    client_idx_set -= set(ta_clients)
     teacher_num = int(args.teacher_percent * args.num_clients)
-    teacher_clients = random.sample(list(client_idx_set), teacher_num)
+    teacher_clients = list(range(teacher_num))
     args.teacher_clients = teacher_clients
     print("teacher clients:", teacher_clients)
 
@@ -169,7 +163,6 @@ if __name__ == "__main__":
 
     training_data = {
         "round": 0,
-        "ta_clients": ta_clients,
         "teacher_clients": teacher_clients,
         "attack_clients": attack_clients,
         "attack_type": args.attack_type,
@@ -181,9 +174,7 @@ if __name__ == "__main__":
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
-            if idx in ta_clients:
-                local_model = deepcopy(ta_model)
-            elif idx in teacher_clients:
+            if idx in teacher_clients:
                 local_model = deepcopy(teacher_model)
             else:
                 local_model = deepcopy(student_model)
