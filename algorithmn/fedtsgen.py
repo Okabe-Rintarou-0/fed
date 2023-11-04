@@ -178,6 +178,13 @@ class FedTSGenServer(FedServerBase):
                 labels_to_aug, labels_aug_num, AUG_MAP[self.args.dataset]
             )
             teacher.label_cnts = teacher.label_distribution()
+            teacher.label_div = sum(
+                [
+                    1
+                    for label in range(self.args.num_classes)
+                    if self.label_cnts[label] > 0
+                ]
+            )
 
         label_avg_cnts = self.compute_avg_client_label_cnts()
         print("after augment:", label_avg_cnts)
@@ -289,8 +296,8 @@ class FedTSGenServer(FedServerBase):
         sum_agg_weights = sum(local_agg_weights)
         for i in range(len(idx_clients)):
             local_agg_weights[i] /= sum_agg_weights
-        # alpha = sin_growth(self.alpha, round, self.max_round)
-        agg_weight = optimize_collaborate_vector(dv, self.alpha, local_agg_weights)
+        alpha = sin_growth(self.alpha, round, self.max_round)
+        agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
         print(agg_weight, local_agg_weights)
 
         self.global_weight = aggregate_weights(
