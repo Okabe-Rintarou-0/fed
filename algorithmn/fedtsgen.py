@@ -282,9 +282,13 @@ class FedTSGenServer(FedServerBase):
             teacher_proto = teacher_protos[label]
             dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
         dv /= self.args.num_classes
+
+        sum_agg_weights = sum(local_agg_weights)
+        for i in range(len(idx_clients)):
+            local_agg_weights[i] /= sum_agg_weights
         # alpha = sin_growth(self.alpha, round, self.max_round)
         agg_weight = optimize_collaborate_vector(dv, self.alpha, local_agg_weights)
-        print(agg_weight)
+        print(agg_weight, local_agg_weights)
 
         self.global_weight = aggregate_weights(
             local_weights, agg_weight, self.client_aggregatable_weights
