@@ -34,7 +34,7 @@ class FedProxServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_model.state_dict()
+        global_weight = self.global_weight
         agg_weights = []
         local_weights = []
         local_losses = []
@@ -66,11 +66,9 @@ class FedProxServer(FedServerBase):
             loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(
+        self.global_weight = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
-        # update global model
-        self.global_model.load_state_dict(global_weight)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
