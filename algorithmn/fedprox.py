@@ -24,6 +24,7 @@ class FedProxServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.global_weight = self.global_model.state_dict()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedProx Global Communication Round : {round} ----")
