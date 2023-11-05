@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--alpha",
         type=float,
-        default=0.8,
+        default=0.4,
         help="Hyper-parameter to avoid concentration",
     )
     parser.add_argument(

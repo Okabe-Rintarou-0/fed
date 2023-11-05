@@ -118,17 +118,17 @@ class FedTSGenServer(FedServerBase):
             for _ in range(n_teacher_iters):
                 self.generator.zero_grad()
                 y = np.random.choice(self.qualified_labels, local_bs)
-                # y2 = np.random.choice(self.qualified_labels, local_bs)
+                y2 = np.random.choice(self.qualified_labels, local_bs)
                 y_input = F.one_hot(
                     torch.LongTensor(y).to(self.device), self.unique_labels
                 ).float()
-                # y_input2 = F.one_hot(
-                #     torch.LongTensor(y2).to(self.device), self.unique_labels
-                # ).float()
-                # lam = torch.rand(local_bs, 1).to(self.device)
-                # mixup = lam * y_input + (1 - lam) * y_input2
+                y_input2 = F.one_hot(
+                    torch.LongTensor(y2).to(self.device), self.unique_labels
+                ).float()
+                lam = torch.rand(local_bs, 1).to(self.device)
+                mixup = lam * y_input + (1 - lam) * y_input2
                 gen_output, _ = self.generator(y_input)
-                # gen_output2, _ = self.generator(mixup)
+                gen_output2, _ = self.generator(mixup)
                 # diversity_loss = self.generator.diversity_loss(eps, gen_output)
                 ######### get teacher loss ############
                 teacher_loss = 0
@@ -136,22 +136,21 @@ class FedTSGenServer(FedServerBase):
                 for client_idx, client in enumerate(selected_teachers):
                     client.local_model.eval()
                     weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
-                    # weight2 = self.label_weights[y2][:, client_idx].reshape(-1, 1)
+                    weight2 = self.label_weights[y2][:, client_idx].reshape(-1, 1)
                     expand_weight = np.tile(weight, (1, self.unique_labels))
                     client_output = client.local_model.classifier(gen_output)
-                    # client_output2 = client.local_model.classifier(gen_output2)
+                    client_output2 = client.local_model.classifier(gen_output2)
                     teacher_loss_ = torch.mean(
                         self.generator.crossentropy_loss(client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32, device=self.device)
                     )
-                    # mixup_teacher_loss_ = torch.mean(
-                    #     self.generator.crossentropy_loss(client_output2, mixup)
-                    #     * torch.tensor(
-                    #         weight * weight2, dtype=torch.float32, device=self.device
-                    #     )
-                    # )
-                    teacher_loss += teacher_loss_
-                    # teacher_loss += teacher_loss_ + mixup_teacher_loss_
+                    mixup_teacher_loss_ = torch.mean(
+                        self.generator.crossentropy_loss(client_output2, mixup)
+                        * torch.tensor(
+                            weight * weight2, dtype=torch.float32, device=self.device
+                        )
+                    )
+                    teacher_loss += teacher_loss_ + mixup_teacher_loss_
                     teacher_logit += client_output * torch.tensor(
                         expand_weight, dtype=torch.float32, device=self.device
                     )
@@ -282,33 +281,33 @@ class FedTSGenServer(FedServerBase):
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
-        # teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+        teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
 
-        # dv = torch.zeros((len(idx_clients)))
-        # for label in range(self.args.num_classes):
-        #     if label not in teacher_protos:
-        #         continue
+        dv = torch.zeros((len(idx_clients)))
+        for label in range(self.args.num_classes):
+            if label not in teacher_protos:
+                continue
 
-        #     this_protos = [
-        #         protos[label] if label in protos else teacher_protos[label]
-        #         for protos in local_protos
-        #     ]
-        #     teacher_proto = teacher_protos[label]
-        #     dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
+            this_protos = [
+                protos[label] if label in protos else teacher_protos[label]
+                for protos in local_protos
+            ]
+            teacher_proto = teacher_protos[label]
+            dv += cal_protos_diff_vector(this_protos, teacher_proto, device=self.device)
 
-        # dv /= self.args.num_classes
-        # print(dv)
+        dv /= self.args.num_classes
+        print(dv)
 
-        # sum_agg_weights = sum(local_agg_weights)
-        # for i in range(len(idx_clients)):
-        #     local_agg_weights[i] /= sum_agg_weights
-        # alpha = sin_growth(self.alpha, round, self.max_round)
-        # agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
-        # print(agg_weight, local_agg_weights)
+        sum_agg_weights = sum(local_agg_weights)
+        for i in range(len(idx_clients)):
+            local_agg_weights[i] /= sum_agg_weights
+        alpha = sin_growth(self.alpha, round, self.max_round)
+        agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
+        print(agg_weight, local_agg_weights)
 
-        # self.global_weight = aggregate_weights(
-        #     local_weights, agg_weight, self.client_aggregatable_weights
-        # )
+        self.global_weight = aggregate_weights(
+            local_weights, agg_weight, self.client_aggregatable_weights
+        )
         self.global_weight = aggregate_weights(
             local_weights, local_agg_weights, self.client_aggregatable_weights
         )
@@ -437,9 +436,14 @@ class FedTSGenClient(FedClientBase):
                 sampled_y = np.random.choice(
                     self.unqualified_labels, self.gen_batch_size
                 )
-                sampled_y = torch.tensor(
-                    sampled_y, device=self.device, dtype=torch.int64
+                n = self.args.num_classes
+                sampled_y = (
+                    F.one_hot(torch.tensor(sampled_y, device=self.device))
+                    * (0.8 * n - 1)
+                    / (n - 1)
                 )
+                # soften label
+                sampled_y += torch.ones_like(sampled_y) * (0.2 * n) / (n - 1)
                 gen_output, _ = self.generator(sampled_y)
                 output = self.local_model.classifier(gen_output)
                 loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
