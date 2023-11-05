@@ -438,7 +438,7 @@ class FedTSGenClient(FedClientBase):
                 )
                 n = self.args.num_classes
                 sampled_y = (
-                    F.one_hot(torch.tensor(sampled_y, device=self.device))
+                    F.one_hot(torch.tensor(sampled_y, device=self.device), num_classes=n)
                     * (0.8 * n - 1)
                     / (n - 1)
                 )
