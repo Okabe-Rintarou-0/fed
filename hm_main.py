@@ -78,6 +78,10 @@ LOADER_PATH_MAP = {
         "train": "./train_cfg/mnist_train_client_20_dirichlet.json",
         "test": "./train_cfg/mnist_test_client_20_dirichlet.json",
     },
+    "fmnist": {
+        "train": "./train_cfg/fmnist_train_client_20_dirichlet.json",
+        "test": "./train_cfg/fmnist_test_client_20_dirichlet.json",
+    },
     "cifar": {
         "train": "./train_cfg/cifar_train_client_20_dirichlet.json",
         "test": "./train_cfg/cifar_test_client_20_dirichlet.json",

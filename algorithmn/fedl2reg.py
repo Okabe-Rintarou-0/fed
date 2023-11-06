@@ -178,7 +178,8 @@ class FedL2RegClient(FedClientBase):
                         else:
                             protos_new[i] = local_protos1[yi].detach()
                     loss1 = self.mse_loss(protos_new, protos)
-                loss = loss0 + self.args.lam * loss1
+                loss2 = protos.norm(dim=1).mean()
+                loss = loss0 + self.args.lam * loss1 + self.args.l2r_coeff * loss2
                 loss.backward()
                 optimizer.step()
                 iter_loss.append(loss.item())

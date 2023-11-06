@@ -140,7 +140,9 @@ class FedProxClient(FedClientBase):
         )
 
         with torch.no_grad():
-            org_weights = weight_flatten(model.state_dict()).to(self.device)
+            org_weights = (
+                weight_flatten(model.state_dict()).detach().clone().to(self.device)
+            )
 
         for _ in range(local_epoch):
             data_loader = iter(self.train_loader)
