@@ -33,6 +33,22 @@ AUG_MAP = {
             transforms.ToTensor(),
         ]
     ),
+    "fmnist": transforms.Compose(
+        [
+            transforms.ToPILImage(),
+            transforms.RandomChoice(
+                [
+                    transforms.AutoAugment(),
+                    transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
+                    transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+                ]
+            ),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.ColorJitter(brightness=0.5),
+            transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
+            transforms.ToTensor(),
+        ]
+    ),
     "cifar": transforms.Compose(
         [
             transforms.ToPILImage(),
