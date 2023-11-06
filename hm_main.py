@@ -115,6 +115,8 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_model_het"
     if args.attack:
         sub_dir_name = f"{sub_dir_name}_attack"
+    if args.agg_head:
+        sub_dir_name = f"{sub_dir_name}_agg_head"
 
     sub_dir_name = (
         f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}"
@@ -123,7 +125,9 @@ if __name__ == "__main__":
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 2
     while os.path.exists(tensorboard_path):
-        tensorboard_path = os.path.join(args.base_dir, "tensorboard", f"{sub_dir_name}_{i}")
+        tensorboard_path = os.path.join(
+            args.base_dir, "tensorboard", f"{sub_dir_name}_{i}"
+        )
         i += 1
     writer = SummaryWriter(log_dir=tensorboard_path)
 

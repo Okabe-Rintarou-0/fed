@@ -80,6 +80,11 @@ def parse_args() -> argparse.Namespace:
         help="Use heterogeneous model",
     )
     parser.add_argument(
+        "--agg_head",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "--domain_het",
         action="store_true",
         default=False,
