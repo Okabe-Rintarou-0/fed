@@ -92,6 +92,12 @@ def gen_data_loaders(
     shuffle: bool,
     get_index: bool,
 ):
+    if shuffle:
+        with open("./train_cfg/mnist_train_client_20_dirichlet", "w") as f:
+            f.write(json.dumps(client_idxs))
+    else:
+        with open("./train_cfg/mnist_test_client_20_dirichlet", "w") as f:
+            f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
         splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)
@@ -531,6 +537,8 @@ def get_dataloaders_from_json(
     get_index = args.get_index
     if dataset in ["cifar", "cifar10"]:
         trainset, testset = cifar10_dataset()
+    elif dataset == "mnist":
+        trainset, testset = mnist_dataset()
     else:
         raise NotImplementedError()
     train_loaders = gen_data_loaders(

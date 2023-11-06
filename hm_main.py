@@ -74,19 +74,25 @@ def read_training_data(training_data_json):
 
 
 LOADER_PATH_MAP = {
+    "mnist": {
+        "train": "./train_cfg/mnist_train_client_20_dirichlet.json",
+        "test": "./train_cfg/mnist_test_client_20_dirichlet.json",
+    },
     "cifar": {
-        "train": "./train_cfg/train_client_20_dirichlet.json",
-        "test": "./train_cfg/test_client_20_dirichlet.json",
-    }
+        "train": "./train_cfg/cifar_train_client_20_dirichlet.json",
+        "test": "./train_cfg/cifar_test_client_20_dirichlet.json",
+    },
 }
 
 if __name__ == "__main__":
     args = parse_args()
     dataset = args.dataset
-    train_loaders, test_loaders = get_dataloaders_from_json(
-        args, LOADER_PATH_MAP[dataset]["train"], LOADER_PATH_MAP[dataset]["test"]
-    )
-    # train_loaders, test_loaders = get_dataloaders(args)
+    if dataset not in LOADER_PATH_MAP:
+        train_loaders, test_loaders = get_dataloaders(args)
+    else:
+        train_loaders, test_loaders = get_dataloaders_from_json(
+            args, LOADER_PATH_MAP[dataset]["train"], LOADER_PATH_MAP[dataset]["test"]
+        )
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
