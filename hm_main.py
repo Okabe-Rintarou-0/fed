@@ -123,8 +123,7 @@ if __name__ == "__main__":
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 2
     while os.path.exists(tensorboard_path):
-        sub_dir_name = f"{sub_dir_name}_{i}"
-        tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
+        tensorboard_path = os.path.join(args.base_dir, "tensorboard", f"{sub_dir_name}_{i}")
         i += 1
     writer = SummaryWriter(log_dir=tensorboard_path)
 
