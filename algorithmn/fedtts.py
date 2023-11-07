@@ -12,7 +12,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
-from data_loader import AUG_MAP
+from data_loader import AUGMENT_TRANSFORM
 from models.base import FedModel
 import matplotlib.pyplot as plt
 from models.generator import Generator
@@ -169,7 +169,7 @@ class FedTTSServer(FedServerBase):
 
             print(labels_to_aug, labels_aug_num)
             teacher.train_loader.dataset.do_augment(
-                labels_to_aug, labels_aug_num, AUG_MAP[self.args.dataset]
+                labels_to_aug, labels_aug_num, AUGMENT_TRANSFORM
             )
             teacher.label_cnts = teacher.label_distribution()
 

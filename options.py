@@ -121,6 +121,10 @@ def parse_args() -> argparse.Namespace:
         args.domain_het = True
         args.iid = True
         args.num_classes = 10
+    elif args.dataset in ["mnist", "fmnist"]:
+        args.num_classes = 10
+    elif args.dataset == "femnist":
+        args.num_classes = 62
     elif args.dataset in ["cifar10", "cifar"]:
         args.num_classes = 10
     elif args.dataset == "cifar100":

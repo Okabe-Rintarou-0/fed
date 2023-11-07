@@ -7,65 +7,37 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
-from datasets import PACS, MultipleDomainDataset, RotatedMNIST
+from datasets import FEMNIST, PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
 from models.mlp import FMNISTMLP, MNISTMLP, CifarMLP
-from models.resnet import CifarResNet, FMNISTResNet, MNISTResNet, PACSResNet, RMNISTResNet
+from models.resnet import (
+    CifarResNet,
+    FMNISTResNet,
+    MNISTResNet,
+    PACSResNet,
+    RMNISTResNet,
+)
 
 DATASET_PATH = "./data"
 
-AUG_MAP = {
-    "mnist": transforms.Compose(
-        [
-            transforms.ToPILImage(),
-            transforms.RandomChoice(
-                [
-                    transforms.AutoAugment(),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-                ]
-            ),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.5),
-            transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
-            transforms.ToTensor(),
-        ]
-    ),
-    "fmnist": transforms.Compose(
-        [
-            transforms.ToPILImage(),
-            transforms.RandomChoice(
-                [
-                    transforms.AutoAugment(),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-                ]
-            ),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.5),
-            transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
-            transforms.ToTensor(),
-        ]
-    ),
-    "cifar": transforms.Compose(
-        [
-            transforms.ToPILImage(),
-            transforms.RandomChoice(
-                [
-                    transforms.AutoAugment(),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
-                    transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
-                ]
-            ),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ColorJitter(brightness=0.5),
-            transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
-            transforms.ToTensor(),
-        ]
-    ),
-}
+AUGMENT_TRANSFORM = transforms.Compose(
+    [
+        transforms.ToPILImage(),
+        transforms.RandomChoice(
+            [
+                transforms.AutoAugment(),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
+                transforms.AutoAugment(transforms.AutoAugmentPolicy.SVHN),
+            ]
+        ),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.5),
+        transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
+        transforms.ToTensor(),
+    ]
+)
 
 
 class DatasetSplit(Dataset):
@@ -124,12 +96,12 @@ def gen_data_loaders(
     shuffle: bool,
     get_index: bool,
 ):
-    # if shuffle:
-    #     with open("./train_cfg/mnist_train_client_20_dirichlet", "w") as f:
-    #         f.write(json.dumps(client_idxs))
-    # else:
-    #     with open("./train_cfg/mnist_test_client_20_dirichlet", "w") as f:
-    #         f.write(json.dumps(client_idxs))
+    if shuffle:
+        with open("./train_cfg/femnist_train_client_20_dirichlet.json", "w") as f:
+            f.write(json.dumps(client_idxs))
+    else:
+        with open("./train_cfg/femnist_test_client_20_dirichlet.json", "w") as f:
+            f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
         splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)
@@ -218,6 +190,17 @@ def cifar10_iid(
 
 def fmnist_iid(
     dataset: datasets.CIFAR100,
+    num_clients: int,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    client_idxs = iid_partition(dataset, num_clients)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
+def femnist_iid(
+    dataset: FEMNIST,
     num_clients: int,
     batch_size: int,
     shuffle: bool,
@@ -412,6 +395,20 @@ def mnist_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
+def femnist_noniid_dirichlet(
+    dataset: FEMNIST,
+    num_clients: int,
+    beta: float,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    num_dataset = len(dataset)
+    targets = np.array(dataset.targets)
+    client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
 def fmnist_dataset() -> Tuple[Dataset, Dataset]:
     trainset = datasets.FashionMNIST(
         "data",
@@ -423,6 +420,26 @@ def fmnist_dataset() -> Tuple[Dataset, Dataset]:
     )
 
     testset = datasets.FashionMNIST(
+        "data",
+        train=False,
+        transform=transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        ),
+    )
+    return trainset, testset
+
+
+def femnist_dataset() -> Tuple[Dataset, Dataset]:
+    trainset = FEMNIST(
+        "data",
+        train=True,
+        download=True,
+        transform=transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        ),
+    )
+
+    testset = FEMNIST(
         "data",
         train=False,
         transform=transforms.Compose(
@@ -595,6 +612,8 @@ def get_dataloaders_from_json(
         trainset, testset = mnist_dataset()
     elif dataset == "fmnist":
         trainset, testset = fmnist_dataset()
+    elif dataset == "femnist":
+        trainset, testset = femnist_dataset()
     else:
         raise NotImplementedError()
     train_loaders = gen_data_loaders(
@@ -696,6 +715,32 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 get_index=get_index,
             )
             test_loaders = fmnist_noniid_dirichlet(
+                testset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=False,
+                get_index=get_index,
+            )
+    elif dataset in ["femnist"]:
+        trainset, testset = femnist_dataset()
+        if iid:
+            train_loaders = femnist_iid(
+                trainset, num_clients, local_bs, shuffle=True, get_index=get_index
+            )
+            test_loaders = femnist_iid(
+                testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            )
+        else:
+            train_loaders = femnist_noniid_dirichlet(
+                trainset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=True,
+                get_index=get_index,
+            )
+            test_loaders = femnist_noniid_dirichlet(
                 testset,
                 num_clients,
                 args.beta,

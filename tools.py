@@ -298,6 +298,38 @@ def weight_flatten_fc(model: Dict[str, Any]):
     return params
 
 
+def weight_flatten_cls(model: Dict[str, Any]):
+    params = []
+    for k in model:
+        if "cls" in k:
+            params.append(model[k].reshape(-1))
+    params = torch.cat(params)
+    return params
+
+
+def cal_cosine_difference_vector(
+    client_idxs: List[int],
+    teacher_weights: Dict[str, Any],
+    weights_map: Dict[int, Dict[str, Any]],
+):
+    num_clients = len(client_idxs)
+    difference_vector = torch.zeros((num_clients))
+    flatten_weights_map = {}
+    teacher_flatten_weights = weight_flatten_cls(teacher_weights).unsqueeze(0)
+    for idx in client_idxs:
+        model_i = weights_map[idx]
+        flatten_weights_map[idx] = weight_flatten_cls(model_i).unsqueeze(0)
+
+    for i in range(num_clients):
+        idx_i = client_idxs[i]
+        flatten_weight_i = flatten_weights_map[idx_i]
+        diff = -torch.nn.functional.cosine_similarity(
+            flatten_weight_i, teacher_flatten_weights
+        ).unsqueeze(0)
+        difference_vector[i] = diff
+    return difference_vector
+
+
 def cal_cosine_difference_matrix(
     client_idxs: List[int],
     initial_global_parameters: Dict[str, Any],

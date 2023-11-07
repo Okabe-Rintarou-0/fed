@@ -12,13 +12,15 @@ import numpy as np
 import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
-from data_loader import AUG_MAP
+from data_loader import AUGMENT_TRANSFORM
 from models.base import FedModel
 import matplotlib.pyplot as plt
 from models.generator import Generator
 from tools import (
     aggregate_protos,
     aggregate_weights,
+    cal_cosine_difference_matrix,
+    cal_cosine_difference_vector,
     cal_protos_diff_vector,
     get_protos,
     optimize_collaborate_vector,
@@ -196,7 +198,7 @@ class FedTSGenServer(FedServerBase):
 
             print(labels_to_aug, labels_aug_num)
             teacher.train_loader.dataset.do_augment(
-                labels_to_aug, labels_aug_num, AUG_MAP[self.args.dataset]
+                labels_to_aug, labels_aug_num, AUGMENT_TRANSFORM
             )
             teacher.label_cnts = teacher.label_distribution()
 
@@ -220,6 +222,7 @@ class FedTSGenServer(FedServerBase):
         local_weights = []
         local_protos = []
         local_agg_weights = []
+        local_weights_map = {}
 
         acc1_dict = {}
         acc2_dict = {}
@@ -246,6 +249,7 @@ class FedTSGenServer(FedServerBase):
             local_client.update_local_model(global_weight=global_weight)
             result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = result.weights
+            local_weights_map[idx] = w
             local_loss = result.loss_map["round_loss"]
             local_acc1 = result.acc_map["acc1"]
             local_acc2 = result.acc_map["acc2"]
@@ -282,30 +286,51 @@ class FedTSGenServer(FedServerBase):
                 student_label_sizes.append(label_cnts)
 
         if self.args.agg_head:
-            teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+            teacher_weights_list = [
+                teacher_weights_map[idx] for idx in teacher_weights_map
+            ]
+            teacher_agg_weights = [
+                teacher_agg_weights_map[idx] for idx in teacher_agg_weights_map
+            ]
+            teacher_weights = aggregate_weights(
+                teacher_weights_list,
+                teacher_agg_weights,
+                self.client_aggregatable_weights,
+            )
 
-            agg_weight = torch.zeros((len(idx_clients),))
-            alpha = sin_growth(self.alpha, round, self.max_round)
-            for label in range(self.args.num_classes):
-                if label not in teacher_protos:
-                    continue
+            dv = cal_cosine_difference_vector(
+                idx_clients,
+                teacher_weights,
+                local_weights_map,
+            )
 
-                this_protos = [
-                    protos[label] if label in protos else teacher_protos[label]
-                    for protos in local_protos
-                ]
-                this_label_sizes = [ls[label] for ls in label_sizes]
-                sum_label_sizes = sum(this_label_sizes)
-                for i in range(len(this_label_sizes)):
-                    this_label_sizes[i] /= sum_label_sizes
+            # teacher_protos = aggregate_protos(teacher_protos, teacher_label_sizes)
+            # agg_weight = torch.zeros((len(idx_clients),))
+            alpha = self.alpha
+            # for label in range(self.args.num_classes):
+            #     if label not in teacher_protos:
+            #         continue
 
-                teacher_proto = teacher_protos[label]
-                dv = cal_protos_diff_vector(
-                    this_protos, teacher_proto, device=self.device
-                )
-                agg_weight += optimize_collaborate_vector(dv, alpha, this_label_sizes)
+            #     this_protos = [
+            #         protos[label] if label in protos else teacher_protos[label]
+            #         for protos in local_protos
+            #     ]
+            #     this_label_sizes = [ls[label] for ls in label_sizes]
+            #     sum_label_sizes = sum(this_label_sizes)
+            #     for i in range(len(this_label_sizes)):
+            #         this_label_sizes[i] /= sum_label_sizes
 
-            agg_weight /= self.args.num_classes
+            #     teacher_proto = teacher_protos[label]
+            #     dv = cal_protos_diff_vector(
+            #         this_protos, teacher_proto, device=self.device
+            #     )
+            #     agg_weight += optimize_collaborate_vector(dv, alpha, this_label_sizes)
+
+            # agg_weight /= self.args.num_classes
+            sum_local_agg_weights = sum(local_agg_weights)
+            for i in range(len(local_agg_weights)):
+                local_agg_weights[i] /= sum_local_agg_weights
+            agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
             tmp = torch.tensor(local_agg_weights)
             print(agg_weight, (tmp / torch.sum(tmp)).tolist())
 
