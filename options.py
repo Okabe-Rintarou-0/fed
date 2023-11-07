@@ -123,7 +123,7 @@ def parse_args() -> argparse.Namespace:
         args.num_classes = 10
     elif args.dataset in ["mnist", "fmnist"]:
         args.num_classes = 10
-    elif args.dataset == "femnist":
+    elif args.dataset == "emnist":
         args.num_classes = 62
     elif args.dataset in ["cifar10", "cifar"]:
         args.num_classes = 10

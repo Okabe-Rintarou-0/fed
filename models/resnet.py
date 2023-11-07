@@ -69,7 +69,6 @@ class ResNetBase(FedModel):
 
     def classifier(self, z):
         y = self.cls(z)
-        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
@@ -98,6 +97,21 @@ class MNISTResNet(ResNetBase):
     def __init__(
         self,
         num_classes=10,
+        probabilistic=False,
+        num_samples=1,
+        backbone="resnet18",
+        model_het=False,
+        z_dim=128,
+    ):
+        super().__init__(
+            num_classes, probabilistic, num_samples, backbone, model_het, z_dim, 1
+        )
+
+
+class EMNISTResNet(ResNetBase):
+    def __init__(
+        self,
+        num_classes=62,
         probabilistic=False,
         num_samples=1,
         backbone="resnet18",

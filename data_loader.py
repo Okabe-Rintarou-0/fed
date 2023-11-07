@@ -14,6 +14,7 @@ from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
 from models.mlp import FMNISTMLP, MNISTMLP, CifarMLP
 from models.resnet import (
     CifarResNet,
+    EMNISTResNet,
     FMNISTResNet,
     MNISTResNet,
     PACSResNet,
@@ -905,7 +906,7 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-        teacher = FMNISTResNet(
+        teacher = EMNISTResNet(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,

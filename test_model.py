@@ -35,5 +35,13 @@ from sklearn.metrics.pairwise import linear_kernel
 
 
 if __name__ == "__main__":
-    d = EMNIST(root="data", download=True, split='byclass')
-    print(d.targets)
+    # d = EMNIST(root="data", split='byclass')
+    # print(torch.unique(d.targets))
+
+    logits = F.softmax(torch.randn((4, 10)), dim=1)
+    print(logits)
+
+    # 计算softmax以获取概率分布
+    h = torch.sum(-logits * torch.log((logits + 1e-10)), dim=1)
+    h = F.softmax(1 / h, dim=0)
+    print(h)

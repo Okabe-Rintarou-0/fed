@@ -75,7 +75,6 @@ class SimpleCNN(FedModel):
 
     def classifier(self, z):
         y = self.cls(z)
-        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
@@ -157,7 +156,6 @@ class ComplexCNN(FedModel):
 
     def classifier(self, z):
         y = self.cls(z)
-        y = F.softmax(y, dim=1)
         return y
 
     def get_aggregatable_weights(self) -> List[str]:
