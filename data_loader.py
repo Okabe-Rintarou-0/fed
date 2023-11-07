@@ -7,7 +7,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
-from datasets import FEMNIST, PACS, MultipleDomainDataset, RotatedMNIST
+from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
@@ -97,10 +97,10 @@ def gen_data_loaders(
     get_index: bool,
 ):
     if shuffle:
-        with open("./train_cfg/femnist_train_client_20_dirichlet.json", "w") as f:
+        with open("./train_cfg/emnist_train_client_20_dirichlet.json", "w") as f:
             f.write(json.dumps(client_idxs))
     else:
-        with open("./train_cfg/femnist_test_client_20_dirichlet.json", "w") as f:
+        with open("./train_cfg/emnist_test_client_20_dirichlet.json", "w") as f:
             f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
@@ -199,8 +199,8 @@ def fmnist_iid(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
-def femnist_iid(
-    dataset: FEMNIST,
+def emnist_iid(
+    dataset: datasets.EMNIST,
     num_clients: int,
     batch_size: int,
     shuffle: bool,
@@ -395,8 +395,8 @@ def mnist_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
-def femnist_noniid_dirichlet(
-    dataset: FEMNIST,
+def emnist_noniid_dirichlet(
+    dataset: datasets.EMNIST,
     num_clients: int,
     beta: float,
     batch_size: int,
@@ -429,9 +429,10 @@ def fmnist_dataset() -> Tuple[Dataset, Dataset]:
     return trainset, testset
 
 
-def femnist_dataset() -> Tuple[Dataset, Dataset]:
-    trainset = FEMNIST(
+def emnist_dataset() -> Tuple[Dataset, Dataset]:
+    trainset = datasets.EMNIST(
         "data",
+        split="byclass",
         train=True,
         download=True,
         transform=transforms.Compose(
@@ -439,8 +440,9 @@ def femnist_dataset() -> Tuple[Dataset, Dataset]:
         ),
     )
 
-    testset = FEMNIST(
+    testset = datasets.EMNIST(
         "data",
+        split="byclass",
         train=False,
         transform=transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
@@ -612,8 +614,8 @@ def get_dataloaders_from_json(
         trainset, testset = mnist_dataset()
     elif dataset == "fmnist":
         trainset, testset = fmnist_dataset()
-    elif dataset == "femnist":
-        trainset, testset = femnist_dataset()
+    elif dataset == "emnist":
+        trainset, testset = emnist_dataset()
     else:
         raise NotImplementedError()
     train_loaders = gen_data_loaders(
@@ -722,17 +724,17 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=False,
                 get_index=get_index,
             )
-    elif dataset in ["femnist"]:
-        trainset, testset = femnist_dataset()
+    elif dataset in ["emnist"]:
+        trainset, testset = emnist_dataset()
         if iid:
-            train_loaders = femnist_iid(
+            train_loaders = emnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = femnist_iid(
+            test_loaders = emnist_iid(
                 testset, num_clients, local_bs, shuffle=False, get_index=get_index
             )
         else:
-            train_loaders = femnist_noniid_dirichlet(
+            train_loaders = emnist_noniid_dirichlet(
                 trainset,
                 num_clients,
                 args.beta,
@@ -740,7 +742,7 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = femnist_noniid_dirichlet(
+            test_loaders = emnist_noniid_dirichlet(
                 testset,
                 num_clients,
                 args.beta,
@@ -872,6 +874,25 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             z_dim=z_dim,
         )
     elif dataset == "fmnist":
+        student = FMNISTMLP(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+        ta = MNISTCNN(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+        teacher = FMNISTResNet(
+            num_classes=num_classes,
+            probabilistic=prob,
+            model_het=model_het,
+            z_dim=z_dim,
+        )
+    elif dataset == "emnist":
         student = FMNISTMLP(
             num_classes=num_classes,
             probabilistic=prob,

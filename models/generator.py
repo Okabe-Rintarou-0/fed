@@ -7,7 +7,7 @@ GENERATORCONFIGS = {
     # hidden_dimension, input_channel
     "mnist": (512, 28),
     "fmnist": (512, 28),
-    "femnist": (512, 28),
+    "emnist": (512, 28),
     "rmnist": (512, 28),
     "cifar": (512, 32),
     "pacs": (512, 224),

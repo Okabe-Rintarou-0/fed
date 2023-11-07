@@ -181,6 +181,8 @@ class FedL2RegClient(FedClientBase):
                 loss2 = protos.norm(dim=1).mean()
                 loss = loss0 + self.args.lam * loss1 + self.args.l2r_coeff * loss2
                 loss.backward()
+                max_grad_norm = 1
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
                 optimizer.step()
                 iter_loss.append(loss.item())
             round_losses.append(sum(iter_loss) / len(iter_loss))
