@@ -103,6 +103,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--augment_percent", type=float, default=2, help="Augment percent"
     )
+    parser.add_argument("--entropy_agg", action="store_true", default=False)
     parser.add_argument(
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )
