@@ -171,7 +171,9 @@ class FedTSGenServer(FedServerBase):
                     teacher_losses = torch.vstack(teacher_losses)
                     teacher_entropies = torch.vstack(teacher_entropies)
                     entropy_weights = F.softmax(1 / teacher_entropies, dim=0)
-                    losses = torch.mean(teacher_losses * entropy_weights, dim=1)
+                    losses = torch.mean(
+                        teacher_losses * entropy_weights * self.args.eta, dim=1
+                    )
                     teacher_loss = torch.sum(losses)
                 else:
                     teacher_loss = 0
