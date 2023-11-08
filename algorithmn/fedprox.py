@@ -24,7 +24,6 @@ class FedProxServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
-        self.global_weight = self.global_model.state_dict()
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedProx Global Communication Round : {round} ----")
@@ -35,9 +34,15 @@ class FedProxServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_weight
         agg_weights = []
         local_weights = []
+
+        student_weights = []
+        student_agg_weights = []
+
+        teacher_weights = []
+        teacher_agg_weights = []
+
         local_losses = []
         local_acc1s = []
         local_acc2s = []
@@ -50,14 +55,22 @@ class FedProxServer(FedServerBase):
             local_client: FedClientBase = self.clients[idx]
             agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
-            local_client.update_local_model(global_weight=global_weight)
             result = local_client.local_train(local_epoch=local_epoch, round=round)
-            w = result.weights
+            w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc1 = result.acc_map["acc1"]
             local_acc2 = result.acc_map["acc2"]
 
-            local_weights.append(copy.deepcopy(w))
+            agg_weight = local_client.agg_weight()
+            agg_weights.append(agg_weight)
+            local_weights.append(w)
+            if idx in self.teacher_clients:
+                teacher_weights.append(w)
+                teacher_agg_weights.append(agg_weight)
+            else:
+                student_weights.append(w)
+                student_agg_weights.append(agg_weight)
+
             local_losses.append(local_loss)
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
@@ -67,9 +80,16 @@ class FedProxServer(FedServerBase):
             loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
-        self.global_weight = aggregate_weights(
+        classfier_weights = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
+        for local_client in self.clients:
+            if local_client.idx in self.teacher_clients:
+                local_client.update_base_model(teacher_weights)
+            else:
+                local_client.update_base_model(student_weights)
+
+            local_client.update_local_classifier(classfier_weights)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)

@@ -34,7 +34,6 @@ class FedAvgServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_weight
         agg_weights = []
         local_weights = []
 

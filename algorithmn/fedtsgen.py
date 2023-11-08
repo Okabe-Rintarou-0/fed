@@ -43,7 +43,6 @@ class FedTSGenServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
-        self.global_weight = self.global_model.state_dict()
         self.ta_clients = args.ta_clients
         self.teacher_clients = args.teacher_clients
         self.alpha = args.alpha
@@ -255,8 +254,6 @@ class FedTSGenServer(FedServerBase):
         idx_clients = np.random.choice(range(num_clients), m, replace=False)
         idx_clients = sorted(idx_clients)
 
-        global_weight = self.global_weight
-
         local_losses = []
         local_acc1s = []
         local_acc2s = []
@@ -269,16 +266,17 @@ class FedTSGenServer(FedServerBase):
         acc2_dict = {}
         loss_dict = {}
 
-        student_agg_weights_map = {}
-        student_weights_map = {}
+        student_weights = []
+        student_agg_weights = []
+
+        teacher_weights = []
+        teacher_agg_weights = []
+
         student_accs = []
         student_protos = []
         student_label_sizes = []
 
         label_sizes = []
-
-        teacher_agg_weights_map = {}
-        teacher_weights_map = {}
         teacher_accs = []
         teacher_protos = []
         teacher_label_sizes = []
@@ -287,7 +285,6 @@ class FedTSGenServer(FedServerBase):
             local_client: FedTSGenClient = self.clients[idx]
             self.selected_clients.append(local_client)
             local_epoch = self.args.local_epoch
-            local_client.update_local_model(global_weight=global_weight)
             result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = result.weights
             local_weights_map[idx] = w
@@ -314,27 +311,21 @@ class FedTSGenServer(FedServerBase):
             label_sizes.append(label_cnts)
 
             if idx in self.teacher_clients:
-                teacher_agg_weights_map[idx] = agg_weight
-                teacher_weights_map[idx] = weights
+                teacher_weights.append(w)
+                teacher_agg_weights.append(agg_weight)
                 teacher_accs.append(local_acc2)
                 teacher_protos.append(protos)
                 teacher_label_sizes.append(label_cnts)
             else:
-                student_agg_weights_map[idx] = agg_weight
-                student_weights_map[idx] = weights
+                student_weights.append(w)
+                student_agg_weights.append(agg_weight)
                 student_accs.append(local_acc2)
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
         if self.args.agg_head:
-            teacher_weights_list = [
-                teacher_weights_map[idx] for idx in teacher_weights_map
-            ]
-            teacher_agg_weights = [
-                teacher_agg_weights_map[idx] for idx in teacher_agg_weights_map
-            ]
             teacher_weights = aggregate_weights(
-                teacher_weights_list,
+                teacher_weights,
                 teacher_agg_weights,
                 self.client_aggregatable_weights,
             )
@@ -379,9 +370,16 @@ class FedTSGenServer(FedServerBase):
                 local_weights, agg_weight, self.client_aggregatable_weights
             )
         else:
-            self.global_weight = aggregate_weights(
+            classfier_weights = aggregate_weights(
                 local_weights, local_agg_weights, self.client_aggregatable_weights
             )
+            for local_client in self.clients:
+                if local_client.idx in self.teacher_clients:
+                    local_client.update_base_model(teacher_weights)
+                else:
+                    local_client.update_base_model(student_weights)
+
+                local_client.update_local_classifier(classfier_weights)
 
         self.train_generator()
 
@@ -538,8 +536,6 @@ class FedTSGenClient(FedClientBase):
                     + self.args.mu * loss3
                     # + self.args.l2r_coeff * loss3
                 )
-                if torch.isnan(loss).any():
-                    exit(-1)
                 loss.backward()
                 optimizer.step()
                 round_losses.append(loss.item())
