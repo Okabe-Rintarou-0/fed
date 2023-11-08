@@ -127,22 +127,27 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_agg_head"
     if args.entropy_agg:
         sub_dir_name = f"{sub_dir_name}_entropy_agg"
+    if args.with_prox:
+        sub_dir_name = f"{sub_dir_name}_with_prox"
 
     sub_dir_name = (
         f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}"
     )
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
-    i = 2
+    i = 1
     while os.path.exists(tensorboard_path):
+        i += 1
         tensorboard_path = os.path.join(
             args.base_dir, "tensorboard", f"{sub_dir_name}_{i}"
         )
-        i += 1
+
     writer = SummaryWriter(log_dir=tensorboard_path)
 
     # setup training data dir
-    training_data_dir = os.path.join(args.base_dir, "training_data", sub_dir_name)
+    training_data_dir = os.path.join(
+        args.base_dir, "training_data", f"{sub_dir_name}_{i}"
+    )
     weights_dir = os.path.join(training_data_dir, "weights")
     training_data_json = os.path.join(training_data_dir, "data.json")
     if not os.path.exists(weights_dir):

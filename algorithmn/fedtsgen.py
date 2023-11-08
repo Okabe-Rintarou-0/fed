@@ -24,6 +24,7 @@ from tools import (
     cal_protos_diff_vector,
     get_protos,
     optimize_collaborate_vector,
+    weight_flatten,
     weight_flatten_cls,
 )
 
@@ -485,7 +486,7 @@ class FedTSGenClient(FedClientBase):
         )
         with torch.no_grad():
             org_weights = (
-                weight_flatten_cls(model.state_dict()).detach().clone().to(self.device)
+                weight_flatten(model.state_dict()).detach().clone().to(self.device)
             )
 
         for _ in range(local_epoch):
@@ -524,7 +525,7 @@ class FedTSGenClient(FedClientBase):
                 output = self.local_model.classifier(gen_output)
                 loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
                 gen_ratio = self.gen_batch_size / self.args.local_bs
-                cur_weights = weight_flatten_cls(model.state_dict()).to(self.device)
+                cur_weights = weight_flatten(model.state_dict()).to(self.device)
                 # loss3 = protos.norm(dim=1).mean()
                 if self.args.with_prox:
                     loss3 = self.mse_loss(cur_weights, org_weights)
