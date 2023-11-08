@@ -78,7 +78,7 @@ LOADER_PATH_MAP = {
         "train": "./train_cfg/mnist_train_client_20_dirichlet.json",
         "test": "./train_cfg/mnist_test_client_20_dirichlet.json",
     },
-    "fmnist": {
+    "emnist": {
         "train": "./train_cfg/emnist_train_client_20_dirichlet.json",
         "test": "./train_cfg/emnist_test_client_20_dirichlet.json",
     },

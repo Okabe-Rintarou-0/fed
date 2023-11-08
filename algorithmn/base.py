@@ -78,6 +78,24 @@ class FedClientBase:
         self.global_protos = global_protos
 
     @abstractmethod
+    def update_base_model(self, global_weight):
+        local_weight = self.local_model.state_dict()
+        classifier_weight_keys = self.local_model.classifier_weight_keys
+        for k in local_weight.keys():
+            if k not in classifier_weight_keys:
+                local_weight[k] = global_weight[k]
+        self.local_model.load_state_dict(local_weight)
+
+    @abstractmethod
+    def update_local_classifier(self, new_weight):
+        local_weight = self.local_model.state_dict()
+        classifier_weight_keys = self.local_model.classifier_weight_keys
+        for k in local_weight.keys():
+            if k in classifier_weight_keys:
+                local_weight[k] = new_weight[k]
+        self.local_model.load_state_dict(local_weight)
+
+    @abstractmethod
     def update_local_model(self, global_weight: Dict[str, Any]):
         local_weight = self.local_model.state_dict()
         can_agg_weights = self.local_model.get_aggregatable_weights()
@@ -145,7 +163,9 @@ class FedServerBase:
             result.acc_map["ta_acc1"] = sum(ta_acc1s) / len(ta_acc1s)
             result.acc_map["ta_acc2"] = sum(ta_acc2s) / len(ta_acc2s)
         if len(teacher_losses) > 0:
-            result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / len(teacher_losses)
+            result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / len(
+                teacher_losses
+            )
             result.acc_map["teacher_acc1"] = sum(teacher_acc1s) / len(teacher_acc1s)
             result.acc_map["teacher_acc2"] = sum(teacher_acc2s) / len(teacher_acc2s)
 

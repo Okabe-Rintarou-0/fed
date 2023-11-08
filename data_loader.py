@@ -852,7 +852,7 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
     num_classes = args.num_classes
     prob = args.prob
     z_dim = args.z_dim
-    model_het = True
+    model_het = args.model_het
     student, ta, teacher = None, None, None
 
     if dataset == "mnist":
