@@ -482,10 +482,6 @@ class FedTSGenClient(FedClientBase):
         optimizer = torch.optim.SGD(
             model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
         )
-        with torch.no_grad():
-            org_weights = (
-                weight_flatten(model.state_dict()).detach().clone().to(self.device)
-            )
 
         for _ in range(local_epoch):
             data_loader = iter(self.train_loader)
@@ -498,37 +494,35 @@ class FedTSGenClient(FedClientBase):
                 model.zero_grad()
                 protos, output = model(images)
                 loss0 = self.criterion(output, labels)
+                loss1 = loss2 = 0
 
-                y_input = torch.LongTensor(labels).to(self.device)
-                gen_protos, _ = self.generator(y_input)
+                if round > 0:
+                    y_input = torch.LongTensor(labels).to(self.device)
+                    gen_protos, _ = self.generator(y_input)
 
-                # latent presentation loss
-                loss1 = self.mse_loss(protos, gen_protos)
+                    # latent presentation loss
+                    loss1 = self.mse_loss(protos, gen_protos)
 
-                # classifier loss
-                sampled_y = np.random.choice(
-                    self.unqualified_labels, self.gen_batch_size
-                )
-                n = self.args.num_classes
-                sampled_y = (
-                    F.one_hot(
-                        torch.tensor(sampled_y, device=self.device), num_classes=n
+                    # classifier loss
+                    sampled_y = np.random.choice(
+                        self.unqualified_labels, self.gen_batch_size
                     )
-                    * (0.8 * n - 1)
-                    / (n - 1)
-                )
-                # soften label
-                sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
-                gen_output, _ = self.generator(sampled_y)
-                output = self.local_model.classifier(gen_output)
-                loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
-                gen_ratio = self.gen_batch_size / self.args.local_bs
-                cur_weights = weight_flatten(model.state_dict()).to(self.device)
-                # loss3 = protos.norm(dim=1).mean()
-                if self.args.with_prox:
-                    loss3 = self.mse_loss(cur_weights, org_weights)
-                else:
-                    loss3 = 0
+                    n = self.args.num_classes
+                    sampled_y = (
+                        F.one_hot(
+                            torch.tensor(sampled_y, device=self.device), num_classes=n
+                        )
+                        * (0.8 * n - 1)
+                        / (n - 1)
+                    )
+                    # soften label
+                    sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
+                    gen_output, _ = self.generator(sampled_y)
+                    output = self.local_model.classifier(gen_output)
+                    loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
+                    gen_ratio = self.gen_batch_size / self.args.local_bs
+                
+                loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
                     + self.args.lam * loss1
