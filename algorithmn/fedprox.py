@@ -54,7 +54,6 @@ class FedProxServer(FedServerBase):
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
-            agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
             result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)

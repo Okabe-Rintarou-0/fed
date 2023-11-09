@@ -23,6 +23,7 @@ class FedL2RegServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.teacher_clients = args.teacher_clients
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedL2Reg Global Communication Round : {round} ----")
@@ -41,40 +42,60 @@ class FedL2RegServer(FedServerBase):
         local_protos = []
         label_sizes = []
 
+        student_weights = []
+        student_agg_weights = []
+
+        teacher_weights = []
+        teacher_agg_weights = []
+
         acc1_dict = {}
         acc2_dict = {}
         loss_dict = {}
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
-            agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
             result = local_client.local_train(local_epoch=local_epoch, round=round)
-            w = result.weights
+            w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc1 = result.acc_map["acc1"]
             local_acc2 = result.acc_map["acc2"]
 
-            local_weights.append(copy.deepcopy(w))
             local_losses.append(local_loss)
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
             local_protos.append(result.protos)
             label_sizes.append(local_client.label_cnts)
 
+            agg_weight = local_client.agg_weight()
+            agg_weights.append(agg_weight)
+            local_weights.append(w)
+            if idx in self.teacher_clients:
+                teacher_weights.append(w)
+                teacher_agg_weights.append(agg_weight)
+            else:
+                student_weights.append(w)
+                student_agg_weights.append(agg_weight)
+
             acc1_dict[f"client_{idx}"] = local_acc1
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
-        global_weight = aggregate_weights(
-            local_weights, agg_weights, self.client_aggregatable_weights
-        )
+        # global_weight = aggregate_weights(
+        #     local_weights, agg_weights, self.client_aggregatable_weights
+        # )
         # update global prototype
         global_protos = aggregate_protos(local_protos, label_sizes)
+        student_weights = aggregate_weights(student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
 
         for local_client in self.clients:
-            local_client.update_local_model(global_weight=global_weight)
+            if local_client.idx in self.teacher_clients:
+                local_client.update_base_model(teacher_weights)
+            else:
+                local_client.update_base_model(student_weights)
+
             local_client.update_global_protos(global_protos=global_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
