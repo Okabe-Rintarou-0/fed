@@ -24,6 +24,7 @@ class FedProxServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
+        self.teacher_clients = args.teacher_clients
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedProx Global Communication Round : {round} ----")
@@ -83,6 +84,11 @@ class FedProxServer(FedServerBase):
         classfier_weights = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
+
+        student_weights = aggregate_weights(student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+
+
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
                 local_client.update_base_model(teacher_weights)
