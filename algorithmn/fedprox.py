@@ -87,7 +87,6 @@ class FedProxServer(FedServerBase):
         student_weights = aggregate_weights(student_weights, student_agg_weights)
         teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
 
-
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
                 local_client.update_base_model(teacher_weights)

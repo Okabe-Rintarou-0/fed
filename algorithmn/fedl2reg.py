@@ -82,9 +82,9 @@ class FedL2RegServer(FedServerBase):
             loss_dict[f"client_{idx}"] = local_loss
 
         # get global weights
-        # global_weight = aggregate_weights(
-        #     local_weights, agg_weights, self.client_aggregatable_weights
-        # )
+        classifier_weights = aggregate_weights(
+            local_weights, agg_weights, self.client_aggregatable_weights
+        )
         # update global prototype
         global_protos = aggregate_protos(local_protos, label_sizes)
         student_weights = aggregate_weights(student_weights, student_agg_weights)
@@ -95,7 +95,7 @@ class FedL2RegServer(FedServerBase):
                 local_client.update_base_model(teacher_weights)
             else:
                 local_client.update_base_model(student_weights)
-
+            local_client.update_local_classifier(classifier_weights)
             local_client.update_global_protos(global_protos=global_protos)
 
         loss_avg = sum(local_losses) / len(local_losses)
