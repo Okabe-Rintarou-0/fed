@@ -327,15 +327,9 @@ class FedTSGenServer(FedServerBase):
         teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
 
         if self.args.agg_head:
-            teacher_classifier_weights = aggregate_weights(
-                teacher_weights,
-                teacher_agg_weights,
-                self.client_aggregatable_weights,
-            )
-
             dv = cal_cosine_difference_vector(
                 idx_clients,
-                teacher_classifier_weights,
+                teacher_weights,
                 local_weights_map,
             )
 
@@ -532,7 +526,7 @@ class FedTSGenClient(FedClientBase):
                     loss0
                     + self.args.lam * loss1
                     + gen_ratio * loss2
-                    + self.args.mu * loss3
+                    + self.args.l2r_coeff * loss3
                     # + self.args.l2r_coeff * loss3
                 )
                 loss.backward()

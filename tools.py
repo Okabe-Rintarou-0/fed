@@ -34,6 +34,8 @@ def aggregate_weights(
     """
     Returns the average of the weights.
     """
+    if len(w) == 0:
+        return
     w_avg = copy.deepcopy(w[0])
     if not isinstance(agg_weight, torch.Tensor):
         weight = torch.tensor(agg_weight)
