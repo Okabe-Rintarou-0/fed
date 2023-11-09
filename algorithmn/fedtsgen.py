@@ -302,32 +302,32 @@ class FedTSGenServer(FedServerBase):
 
             agg_weight = local_client.agg_weight()
             weights = copy.deepcopy(w)
-            protos = result.protos
+            # protos = result.protos
             label_cnts = local_client.label_cnts
 
             local_agg_weights.append(agg_weight)
             local_weights.append(weights)
-            local_protos.append(protos)
+            # local_protos.append(protos)
             label_sizes.append(label_cnts)
 
             if idx in self.teacher_clients:
                 teacher_weights.append(w)
                 teacher_agg_weights.append(agg_weight)
                 teacher_accs.append(local_acc2)
-                teacher_protos.append(protos)
+                # teacher_protos.append(protos)
                 teacher_label_sizes.append(label_cnts)
             else:
                 student_weights.append(w)
                 student_agg_weights.append(agg_weight)
                 student_accs.append(local_acc2)
-                student_protos.append(protos)
+                # student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
         student_weights = aggregate_weights(student_weights, student_agg_weights)
         teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
 
         if self.args.agg_head:
-            teacher_weights = aggregate_weights(
+            teacher_classifier_weights = aggregate_weights(
                 teacher_weights,
                 teacher_agg_weights,
                 self.client_aggregatable_weights,
@@ -335,7 +335,7 @@ class FedTSGenServer(FedServerBase):
 
             dv = cal_cosine_difference_vector(
                 idx_clients,
-                teacher_weights,
+                teacher_classifier_weights,
                 local_weights_map,
             )
 
@@ -369,20 +369,20 @@ class FedTSGenServer(FedServerBase):
             tmp = torch.tensor(local_agg_weights)
             print(agg_weight, (tmp / torch.sum(tmp)).tolist())
 
-            self.global_weight = aggregate_weights(
+            classifier_weights = aggregate_weights(
                 local_weights, agg_weight, self.client_aggregatable_weights
             )
         else:
-            classfier_weights = aggregate_weights(
+            classifier_weights = aggregate_weights(
                 local_weights, local_agg_weights, self.client_aggregatable_weights
             )
-            for local_client in self.clients:
-                if local_client.idx in self.teacher_clients:
-                    local_client.update_base_model(teacher_weights)
-                else:
-                    local_client.update_base_model(student_weights)
+        for local_client in self.clients:
+            if local_client.idx in self.teacher_clients:
+                local_client.update_base_model(teacher_weights)
+            else:
+                local_client.update_base_model(student_weights)
 
-                local_client.update_local_classifier(classfier_weights)
+            local_client.update_local_classifier(classifier_weights)
 
         self.train_generator()
 
@@ -541,7 +541,7 @@ class FedTSGenClient(FedClientBase):
 
         acc2 = self.local_test()
 
-        result.protos = self.get_local_protos()
+        # result.protos = self.get_local_protos()
         result.weights = model.state_dict()
         result.acc_map["acc1"] = acc1
         result.acc_map["acc2"] = acc2
