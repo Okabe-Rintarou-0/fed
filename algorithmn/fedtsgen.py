@@ -323,6 +323,9 @@ class FedTSGenServer(FedServerBase):
                 student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
+        student_weights = aggregate_weights(student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+
         if self.args.agg_head:
             teacher_weights = aggregate_weights(
                 teacher_weights,
@@ -519,9 +522,11 @@ class FedTSGenClient(FedClientBase):
                     sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)
-                    loss2 = torch.mean(self.generator.crossentropy_loss(output, sampled_y))
+                    loss2 = torch.mean(
+                        self.generator.crossentropy_loss(output, sampled_y)
+                    )
                     gen_ratio = self.gen_batch_size / self.args.local_bs
-                
+
                 loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
