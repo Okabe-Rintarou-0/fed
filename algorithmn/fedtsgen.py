@@ -525,8 +525,8 @@ class FedTSGenClient(FedClientBase):
                     loss2 = torch.mean(
                         self.generator.crossentropy_loss(output, sampled_y)
                     )
-                    gen_ratio = self.gen_batch_size / self.args.local_bs
 
+                gen_ratio = self.gen_batch_size / self.args.local_bs
                 loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
