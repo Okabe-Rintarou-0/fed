@@ -25,6 +25,7 @@ DATASET_PATH = "./data"
 
 AUGMENT_TRANSFORM = transforms.Compose(
     [
+        transforms.ToPILImage(),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
         transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
