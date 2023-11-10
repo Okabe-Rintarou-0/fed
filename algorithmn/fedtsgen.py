@@ -89,12 +89,12 @@ class FedTSGenServer(FedServerBase):
         ) // (len(self.teacher_clients) * num_labels)
         return label_avg_cnts
 
-    def get_label_weights(self, selected_teachers):
+    def get_label_weights(self, selected_clients):
         label_weights = []
         qualified_labels = []
         for label in range(self.unique_labels):
             weights = []
-            for client in selected_teachers:
+            for client in selected_clients:
                 weights.append(client.label_cnts[label])
             if np.max(weights) > 1:
                 qualified_labels.append(label)
@@ -107,13 +107,13 @@ class FedTSGenServer(FedServerBase):
         print("Training generator...", end="")
         self.generator.train()
         self.global_model.eval()
-        selected_teachers = [
-            client
-            for client in self.selected_clients
-            if client.idx in self.teacher_clients
-        ]
+        # selected_teachers = [
+        #     client
+        #     for client in self.selected_clients
+        #     if client.idx in self.teacher_clients
+        # ]
         self.label_weights, self.qualified_labels = self.get_label_weights(
-            selected_teachers
+            self.selected_clients
         )
 
         local_bs = self.args.local_bs
@@ -139,7 +139,7 @@ class FedTSGenServer(FedServerBase):
                 if self.args.entropy_agg:
                     teacher_losses = []
                     teacher_entropies = []
-                    for client_idx, client in enumerate(selected_teachers):
+                    for client_idx, client in enumerate(self.selected_clients):
                         client.local_model.eval()
                         weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                         # weight2 = self.label_weights[y2][:, client_idx].reshape(-1, 1)
@@ -491,7 +491,7 @@ class FedTSGenClient(FedClientBase):
                 model.zero_grad()
                 protos, output = model(images)
                 loss0 = self.criterion(output, labels)
-                loss1 = loss2 = 0
+                loss1 = loss2 = loss3 = 0
 
                 if round > 0:
                     y_input = torch.LongTensor(labels).to(self.device)
@@ -521,12 +521,12 @@ class FedTSGenClient(FedClientBase):
                     )
 
                 gen_ratio = self.gen_batch_size / self.args.local_bs
-                loss3 = protos.norm(dim=1).mean()
+                loss4 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
                     + self.args.lam * loss1
                     + gen_ratio * loss2
-                    + self.args.l2r_coeff * loss3
+                    + self.args.l2r_coeff * loss4
                     # + self.args.l2r_coeff * loss3
                 )
                 loss.backward()
