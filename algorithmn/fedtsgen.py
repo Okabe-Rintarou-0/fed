@@ -103,7 +103,7 @@ class FedTSGenServer(FedServerBase):
         label_weights = np.array(label_weights).reshape((self.unique_labels, -1))
         return label_weights, qualified_labels
 
-    def train_generator(self, epoches=1, n_teacher_iters=20):
+    def train_generator(self, round, epoches=1, n_teacher_iters=20):
         print("Training generator...", end="")
         self.generator.train()
         self.global_model.eval()
@@ -171,13 +171,18 @@ class FedTSGenServer(FedServerBase):
                     teacher_losses = torch.vstack(teacher_losses)
                     teacher_entropies = torch.vstack(teacher_entropies)
                     entropy_weights = F.softmax(1 / teacher_entropies, dim=0)
+                    ratio = (
+                        1.0
+                        if client.idx in self.teacher_clients
+                        else round / self.args.epochs
+                    )
                     losses = torch.mean(
-                        teacher_losses * entropy_weights * self.args.eta, dim=1
+                        teacher_losses * entropy_weights * self.args.eta * ratio, dim=1
                     )
                     teacher_loss = torch.sum(losses)
                 else:
                     teacher_loss = 0
-                    for client_idx, client in enumerate(selected_teachers):
+                    for client_idx, client in enumerate(self.selected_clients):
                         client.local_model.eval()
                         weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
                         # weight2 = self.label_weights[y2][:, client_idx].reshape(-1, 1)
@@ -378,7 +383,7 @@ class FedTSGenServer(FedServerBase):
 
             local_client.update_local_classifier(classifier_weights)
 
-        self.train_generator()
+        self.train_generator(round)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
@@ -502,18 +507,18 @@ class FedTSGenClient(FedClientBase):
 
                     # classifier loss
                     sampled_y = np.random.choice(
-                        self.unqualified_labels, self.gen_batch_size
+                        list(range(self.available_labels)), self.gen_batch_size
                     )
-                    n = self.args.num_classes
-                    sampled_y = (
-                        F.one_hot(
-                            torch.tensor(sampled_y, device=self.device), num_classes=n
-                        )
-                        * (0.8 * n - 1)
-                        / (n - 1)
-                    )
+                    # n = self.args.num_classes
+                    # sampled_y = (
+                    #     F.one_hot(
+                    #         torch.tensor(sampled_y, device=self.device), num_classes=n
+                    #     )
+                    #     * (0.8 * n - 1)
+                    #     / (n - 1)
+                    # )
                     # soften label
-                    sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
+                    # sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)
                     loss2 = torch.mean(
