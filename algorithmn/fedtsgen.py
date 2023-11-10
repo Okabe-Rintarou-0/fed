@@ -439,10 +439,7 @@ class FedTSGenClient(FedClientBase):
         )
         self.generator = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ensemble_loss = torch.nn.KLDivLoss(reduction="batchmean")
         self.label_cnts = self.label_distribution()
-        self.generative_alpha = 10
-        self.generative_beta = 10
         self.available_labels = self.args.num_classes
         label_cnts_list = [
             self.label_cnts[label] for label in range(self.available_labels)
@@ -473,11 +470,6 @@ class FedTSGenClient(FedClientBase):
         local_protos = get_protos(local_protos_list)
         return local_protos
 
-    def exp_lr_scheduler(self, epoch, decay=0.98, init_lr=0.1, lr_decay_epoch=1):
-        """Decay learning rate by a factor of 0.95 every lr_decay_epoch epochs."""
-        lr = max(1e-4, init_lr * (decay ** (epoch // lr_decay_epoch)))
-        return lr
-
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model
@@ -506,24 +498,12 @@ class FedTSGenClient(FedClientBase):
                 loss0 = self.criterion(output, labels)
                 loss1 = loss2 = loss3 = 0
 
-                generative_alpha = self.exp_lr_scheduler(
-                    round, decay=0.98, init_lr=self.generative_alpha
-                )
-                generative_beta = self.exp_lr_scheduler(
-                    round, decay=0.98, init_lr=self.generative_beta
-                )
-
                 if round > 0:
                     y_input = torch.LongTensor(labels).to(self.device)
                     gen_protos, _ = self.generator(y_input)
 
                     # latent presentation loss
-                    # loss1 = self.mse_loss(protos, gen_protos)
-                    lr_g = 1 - round / (self.args.epochs - 1)
-                    client_logp = F.log_softmax(output, dim=1)
-                    logit_given_gen = self.local_model.classifier(gen_protos)
-                    target_p = F.softmax(logit_given_gen.clone().detach(), dim=1)
-                    loss1 = lr_g * self.ensemble_loss(client_logp, target_p)
+                    loss1 = self.mse_loss(protos, gen_protos)
 
                     # classifier loss
                     sampled_y = np.random.choice(
@@ -541,17 +521,17 @@ class FedTSGenClient(FedClientBase):
                     # sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)
-                    loss2 = lr_g * torch.mean(
+                    loss2 = torch.mean(
                         self.generator.crossentropy_loss(output, sampled_y)
                     )
 
                 gen_ratio = self.gen_batch_size / self.args.local_bs
-                loss3 = protos.norm(dim=1).mean()
+                loss4 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
-                    + loss1
+                    + self.args.lam * loss1
                     + gen_ratio * loss2
-                    + self.args.l2r_coeff * loss3
+                    + self.args.l2r_coeff * loss4
                     # + self.args.l2r_coeff * loss3
                 )
                 loss.backward()
