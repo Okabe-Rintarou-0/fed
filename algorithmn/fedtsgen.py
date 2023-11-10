@@ -103,7 +103,7 @@ class FedTSGenServer(FedServerBase):
         label_weights = np.array(label_weights).reshape((self.unique_labels, -1))
         return label_weights, qualified_labels
 
-    def train_generator(self, epoches=1, n_teacher_iters=20):
+    def train_generator(self, round, epoches=1, n_teacher_iters=20):
         print("Training generator...", end="")
         self.generator.train()
         self.global_model.eval()
@@ -381,7 +381,7 @@ class FedTSGenServer(FedServerBase):
 
             local_client.update_local_classifier(classifier_weights)
 
-        self.train_generator()
+        self.train_generator(round)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
@@ -517,10 +517,11 @@ class FedTSGenClient(FedClientBase):
 
                     # latent presentation loss
                     # loss1 = self.mse_loss(protos, gen_protos)
+                    lr_g = 1 - round / (self.args.epochs - 1)
                     client_logp = F.log_softmax(output, dim=1)
                     logit_given_gen = self.local_model.classifier(gen_protos)
                     target_p = F.softmax(logit_given_gen.clone().detach(), dim=1)
-                    loss1 = generative_alpha * self.ensemble_loss(client_logp, target_p)
+                    loss1 = lr_g * self.ensemble_loss(client_logp, target_p)
 
                     # classifier loss
                     sampled_y = np.random.choice(
@@ -538,7 +539,7 @@ class FedTSGenClient(FedClientBase):
                     sampled_y += torch.ones_like(sampled_y) * 0.2 / (n - 1)
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)
-                    loss2 = generative_beta * torch.mean(
+                    loss2 = lr_g * torch.mean(
                         self.generator.crossentropy_loss(output, sampled_y)
                     )
 
