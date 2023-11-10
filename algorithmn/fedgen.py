@@ -28,7 +28,7 @@ class FedGenServer(FedServerBase):
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
         ).to(args.device)
-        self.teacher_clients = args.teacher_clients
+        self.teacher_clients = self.args.teacher_clients
 
         for client in clients:
             client.generator = self.generator

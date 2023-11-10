@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gen_batch_size",
         type=int,
-        default=32,
+        default=64,
         help="gen batch size",
     )
     parser.add_argument(
