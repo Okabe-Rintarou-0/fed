@@ -334,7 +334,6 @@ class FedTSGenServer(FedServerBase):
         if self.args.agg_head:
             dv = cal_cosine_difference_vector(
                 idx_clients,
-                teacher_weights,
                 local_weights_map,
             )
 

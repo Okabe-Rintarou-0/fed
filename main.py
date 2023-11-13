@@ -2,14 +2,11 @@ from copy import deepcopy
 import json
 import os
 import random
-from typing import List
-from algorithmn.fedgen import FedGenClient, FedGenServer
-from algorithmn.fedsrgen import FedSRGenClient, FedSRGenServer
 
-from algorithmn.fedsrplus import FedSRPlusClient, FedSRPlusServer
 import numpy as np
 import torch
 from tqdm import tqdm
+from algorithmn.fedgen import FedGenClient, FedGenServer
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedgmm import FedGMMClient, FedGMMServer
@@ -18,10 +15,6 @@ from algorithmn.fedpac import FedPACClient, FedPACServer
 from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
-from algorithmn.fedsrplus2 import FedSRPlus2Client, FedSRPlus2Server
-from algorithmn.fedsrplus3 import FedSRPlus3Client, FedSRPlus3Server
-from algorithmn.fedsrplus4 import FedSR4PlusServer, FedSRPlus4Client
-from algorithmn.fedsrplus5 import FedSRPlus5Client, FedSRPlus5Server
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
@@ -46,13 +39,7 @@ FL_CLIENT = {
     "FedSR": FedSRClient,
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
-    "FedSR+": FedSRPlusClient,
-    "FedSR+2": FedSRPlus2Client,
-    "FedSR+3": FedSRPlus3Client,
-    "FedSR+4": FedSRPlus4Client,
-    "FedSR+5": FedSRPlus5Client,
     "FedGen": FedGenClient,
-    "FedSRGen": FedSRGenClient,
 }
 
 FL_SERVER = {
@@ -66,13 +53,7 @@ FL_SERVER = {
     "FedSR": FedSRServer,
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
-    "FedSR+": FedSRPlusServer,
-    "FedSR+2": FedSRPlus2Server,
-    "FedSR+3": FedSRPlus3Server,
-    "FedSR+4": FedSR4PlusServer,
-    "FedSR+5": FedSRPlus5Server,
     "FedGen": FedGenServer,
-    "FedSRGen": FedSRGenServer,
 }
 
 

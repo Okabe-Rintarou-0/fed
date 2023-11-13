@@ -39,11 +39,18 @@ class PFedGraphServer(FedServerBase):
         idx_clients = sorted(idx_clients)
 
         local_weights_map = {}
+        local_weights = []
 
         agg_weights = []
         local_losses = []
         local_acc1s = []
         local_acc2s = []
+
+        student_weights = []
+        student_agg_weights = []
+
+        teacher_weights = []
+        teacher_agg_weights = []
 
         acc1_dict = {}
         acc2_dict = {}
@@ -51,15 +58,23 @@ class PFedGraphServer(FedServerBase):
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
-            agg_weights.append(local_client.agg_weight())
             local_epoch = self.args.local_epoch
             result = local_client.local_train(local_epoch=local_epoch, round=round)
-            w = result.weights
+            w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc1 = result.acc_map["acc1"]
             local_acc2 = result.acc_map["acc2"]
 
-            local_weights_map[idx] = copy.deepcopy(w)
+            agg_weight = local_client.agg_weight()
+            agg_weights.append(agg_weight)
+            local_weights.append(w)
+            if idx in self.teacher_clients:
+                teacher_weights.append(w)
+                teacher_agg_weights.append(agg_weight)
+            else:
+                student_weights.append(w)
+                student_agg_weights.append(agg_weight)
+            local_weights_map[idx] = w
             local_losses.append(local_loss)
             local_acc1s.append(local_acc1)
             local_acc2s.append(local_acc2)
@@ -95,7 +110,11 @@ class PFedGraphServer(FedServerBase):
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
-            local_client.update_local_model(global_weight=agg_weights_map[idx])
+            local_client.update_local_classifier(global_weight=agg_weights_map[idx])
+            if local_client.idx in self.teacher_clients:
+                local_client.update_base_model(teacher_weights)
+            else:
+                local_client.update_base_model(student_weights)
 
         loss_avg = sum(local_losses) / len(local_losses)
         acc_avg1 = sum(local_acc1s) / len(local_acc1s)
