@@ -10,6 +10,7 @@ GENERATORCONFIGS = {
     "emnist": (512, 28),
     "rmnist": (512, 28),
     "cifar": (512, 32),
+    "cifar100": (512, 32),
     "pacs": (512, 224),
 }
 

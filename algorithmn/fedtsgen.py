@@ -506,9 +506,9 @@ class FedTSGenClient(FedClientBase):
                     loss1 = self.mse_loss(protos, gen_protos)
 
                     # classifier loss
-                    sampled_y = np.random.choice(
+                    sampled_y = torch.tensor(np.random.choice(
                         list(range(self.available_labels)), self.gen_batch_size
-                    )
+                    ))
                     # n = self.args.num_classes
                     # sampled_y = (
                     #     F.one_hot(
