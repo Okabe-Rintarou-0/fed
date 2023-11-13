@@ -604,6 +604,8 @@ def get_dataloaders_from_json(
     get_index = args.get_index
     if dataset in ["cifar", "cifar10"]:
         trainset, testset = cifar10_dataset()
+    elif dataset == "cifar100":
+        trainset, testset = cifar100_dataset()
     elif dataset == "mnist":
         trainset, testset = mnist_dataset()
     elif dataset == "fmnist":
