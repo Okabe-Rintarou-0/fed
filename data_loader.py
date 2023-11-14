@@ -1,5 +1,6 @@
 from argparse import Namespace
 import json
+import os
 import random
 from typing import List, Tuple
 import numpy as np
@@ -9,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
-
+from pytorch_cinic.dataset import CINIC10
 from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
 from models.mlp import FMNISTMLP, MNISTMLP, CifarMLP
 from models.resnet import (
@@ -91,10 +92,10 @@ def gen_data_loaders(
     get_index: bool,
 ):
     # if shuffle:
-    #     with open("./train_cfg/cifar100_train_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/cinic10_train_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     # else:
-    #     with open("./train_cfg/cifar100_test_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/cinic10_test_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
@@ -173,6 +174,17 @@ def iid_partition(
 
 def cifar10_iid(
     dataset: datasets.CIFAR10,
+    num_clients: int,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    client_idxs = iid_partition(dataset, num_clients)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
+def cinic10_iid(
+    dataset: CINIC10,
     num_clients: int,
     batch_size: int,
     shuffle: bool,
@@ -347,6 +359,20 @@ def cifar10_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
+def cinic10_noniid_dirichlet(
+    dataset: CINIC10,
+    num_clients: int,
+    beta: float,
+    batch_size: int,
+    shuffle: bool,
+    get_index: bool,
+):
+    num_dataset = len(dataset)
+    targets = np.array(dataset.targets)
+    client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
+    return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
+
+
 def cifar100_noniid_dirichlet(
     dataset: datasets.CIFAR100,
     num_clients: int,
@@ -453,6 +479,37 @@ def mnist_dataset() -> Tuple[Dataset, Dataset]:
         DATASET_PATH, train=True, download=True, transform=transform
     )
     testset = datasets.MNIST(DATASET_PATH, train=False, transform=transform)
+    return trainset, testset
+
+
+def cinic10_dataset() -> Tuple[Dataset, Dataset]:
+    transform_train = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                (0.47889522, 0.47227842, 0.43047404),
+                (0.24205776, 0.23828046, 0.25874835),
+            ),
+        ]
+    )
+
+    transform_test = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                (0.47889522, 0.47227842, 0.43047404),
+                (0.24205776, 0.23828046, 0.25874835),
+            ),
+        ]
+    )
+
+    root = os.path.join(DATASET_PATH, "cinic10")
+    trainset = CINIC10(
+        root, partition="train", download=True, transform=transform_train
+    )
+    testset = CINIC10(root, parition="test", transform=transform_test)
     return trainset, testset
 
 
@@ -687,6 +744,32 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 get_index=get_index,
             )
             test_loaders = cifar10_noniid_dirichlet(
+                testset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=False,
+                get_index=get_index,
+            )
+    elif dataset in ["cinic", "cinic10"]:
+        trainset, testset = cinic10_dataset()
+        if iid:
+            train_loaders = cinic10_iid(
+                trainset, num_clients, local_bs, shuffle=True, get_index=get_index
+            )
+            test_loaders = cinic10_iid(
+                testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            )
+        else:
+            train_loaders = cinic10_noniid_dirichlet(
+                trainset,
+                num_clients,
+                args.beta,
+                local_bs,
+                shuffle=True,
+                get_index=get_index,
+            )
+            test_loaders = cinic10_noniid_dirichlet(
                 testset,
                 num_clients,
                 args.beta,
