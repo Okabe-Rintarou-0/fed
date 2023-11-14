@@ -329,7 +329,7 @@ def cal_cosine_difference_vector(
             diff = -torch.nn.functional.cosine_similarity(
                 flatten_weight_i, flatten_weight_j
             ).unsqueeze(0)
-            difference_vector[i] += diff
+            difference_vector[i] += diff.item()
         difference_vector[i] /= num_clients
     return difference_vector
 
