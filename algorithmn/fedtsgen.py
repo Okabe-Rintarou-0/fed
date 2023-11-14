@@ -111,9 +111,7 @@ class FedTSGenServer(FedServerBase):
             for _ in range(n_teacher_iters):
                 self.generator.zero_grad()
                 y = np.random.choice(self.qualified_labels, local_bs)
-                y_input = F.one_hot(
-                    torch.LongTensor(y).to(self.device), self.unique_labels
-                ).float()
+                y_input = F.one_hot(torch.LongTensor(y), self.unique_labels).float()
                 gen_output, _ = self.generator(y_input)
                 if self.args.entropy_agg:
                     teacher_losses = []
@@ -129,9 +127,7 @@ class FedTSGenServer(FedServerBase):
                         teacher_entropies.append(entropy)
                         teacher_loss_ = (
                             self.generator.crossentropy_loss(client_output, y_input)
-                            * torch.tensor(
-                                weight, dtype=torch.float32, device=self.device
-                            ).squeeze()
+                            * torch.tensor(weight, dtype=torch.float32).squeeze()
                         )
 
                         teacher_losses.append(teacher_loss_)
@@ -156,9 +152,7 @@ class FedTSGenServer(FedServerBase):
                         client_output = client.local_model.classifier(gen_output)
                         teacher_loss_ = torch.mean(
                             self.generator.crossentropy_loss(client_output, y_input)
-                            * torch.tensor(
-                                weight, dtype=torch.float32, device=self.device
-                            ).squeeze()
+                            * torch.tensor(weight, dtype=torch.float32).squeeze()
                         )
                         teacher_loss += teacher_loss_
 
@@ -425,7 +419,7 @@ class FedTSGenClient(FedClientBase):
                 protos, output = model(images)
                 loss0 = self.criterion(output, labels)
                 loss1 = loss2 = loss3 = 0
-
+                self.generator.to(self.device)
                 if round > 0:
                     y_input = torch.LongTensor(labels).to(self.device)
                     gen_protos, _ = self.generator(y_input)
@@ -474,4 +468,5 @@ class FedTSGenClient(FedClientBase):
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         self.clear_memory()
+        self.generator.to("cpu")
         return result
