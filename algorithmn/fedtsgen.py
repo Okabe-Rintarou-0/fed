@@ -46,6 +46,7 @@ class FedTSGenServer(FedServerBase):
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
         )
+        self.initial_global_weights = copy.deepcopy(global_model.state_dict())
 
         for client in clients:
             client.generator = self.generator
@@ -280,6 +281,7 @@ class FedTSGenServer(FedServerBase):
         if self.args.agg_head:
             dv = cal_cosine_difference_vector(
                 idx_clients,
+                self.initial_global_weights,
                 local_weights_map,
             )
             alpha = self.alpha
@@ -394,7 +396,7 @@ class FedTSGenClient(FedClientBase):
 
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
-        model = self.local_model
+        model = self.local_model.to(self.device)
         model.train()
         model.zero_grad()
         round_losses = []
@@ -421,8 +423,7 @@ class FedTSGenClient(FedClientBase):
                 loss1 = loss2 = loss3 = 0
                 self.generator.to(self.device)
                 if round > 0:
-                    y_input = torch.LongTensor(labels).to(self.device)
-                    gen_protos, _ = self.generator(y_input)
+                    gen_protos, _ = self.generator(labels)
 
                     # latent presentation loss
                     loss1 = self.mse_loss(protos, gen_protos)
@@ -431,7 +432,8 @@ class FedTSGenClient(FedClientBase):
                     sampled_y = torch.tensor(
                         np.random.choice(
                             list(range(self.available_labels)), self.gen_batch_size
-                        )
+                        ),
+                        device=self.device,
                     )
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)

@@ -311,13 +311,19 @@ def weight_flatten_cls(model: Dict[str, Any]):
 
 def cal_cosine_difference_vector(
     client_idxs: List[int],
+    initial_global_parameters: Dict[str, Any],
     weights_map: Dict[int, Dict[str, Any]],
 ):
     num_clients = len(client_idxs)
     difference_vector = torch.zeros((num_clients))
     flatten_weights_map = {}
+    dw = {}
     for idx in client_idxs:
         model_i = weights_map[idx]
+        dw[idx] = {}
+        model_i = weights_map[idx]
+        for key in model_i:
+            dw[idx][key] = model_i[key] - initial_global_parameters[key]
         flatten_weights_map[idx] = weight_flatten_cls(model_i).unsqueeze(0)
 
     for i in range(num_clients):
