@@ -45,7 +45,7 @@ class FedTSGenServer(FedServerBase):
         self.kpca = KernelPCA(n_components=2)
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
-        ).to(args.device)
+        )
 
         for client in clients:
             client.generator = self.generator
@@ -473,4 +473,5 @@ class FedTSGenClient(FedClientBase):
             self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
             self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
+        self.clear_memory()
         return result
