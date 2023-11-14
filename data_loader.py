@@ -368,7 +368,10 @@ def cinic10_noniid_dirichlet(
     get_index: bool,
 ):
     num_dataset = len(dataset)
-    targets = np.array(dataset.targets)
+    targets = []
+    for _, label in dataset:
+        targets.append(label)
+    targets = np.array(targets)
     client_idxs = dirichlet_partition(num_dataset, num_clients, targets, beta)
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
@@ -509,7 +512,7 @@ def cinic10_dataset() -> Tuple[Dataset, Dataset]:
     trainset = CINIC10(
         root, partition="train", download=True, transform=transform_train
     )
-    testset = CINIC10(root, parition="test", transform=transform_test)
+    testset = CINIC10(root, partition="test", download=True, transform=transform_test)
     return trainset, testset
 
 
