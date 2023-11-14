@@ -664,6 +664,8 @@ def get_dataloaders_from_json(
     get_index = args.get_index
     if dataset in ["cifar", "cifar10"]:
         trainset, testset = cifar10_dataset()
+    elif dataset in ["cinic10", "cinic"]:
+        trainset, testset = cinic10_dataset()
     elif dataset == "cifar100":
         trainset, testset = cifar100_dataset()
     elif dataset == "mnist":
@@ -993,7 +995,7 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-    elif dataset in ["cifar", "cifar10", "cifar100"]:
+    elif dataset in ["cifar", "cifar10", "cifar100", "cinic10"]:
         student = CifarMLP(
             num_classes=num_classes,
             probabilistic=prob,
