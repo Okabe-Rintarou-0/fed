@@ -91,12 +91,12 @@ def gen_data_loaders(
     shuffle: bool,
     get_index: bool,
 ):
-    if shuffle:
-        with open("./train_cfg/fmnist_train_client_20_dirichle_2.json", "w") as f:
-            f.write(json.dumps(client_idxs))
-    else:
-        with open("./train_cfg/fmnist_test_client_20_dirichlet_2.json", "w") as f:
-            f.write(json.dumps(client_idxs))
+    # if shuffle:
+    #     with open("./train_cfg/fmnist_train_client_20_dirichle_2.json", "w") as f:
+    #         f.write(json.dumps(client_idxs))
+    # else:
+    #     with open("./train_cfg/fmnist_test_client_20_dirichlet_2.json", "w") as f:
+    #         f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
         splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)
