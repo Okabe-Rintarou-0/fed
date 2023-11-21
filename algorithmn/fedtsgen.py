@@ -51,7 +51,7 @@ class FedTSGenServer(FedServerBase):
         for client in clients:
             client.generator = self.generator
 
-        self.augment_teacher()
+        # self.augment_teacher()
 
         self.unique_labels = args.num_classes
         self.selected_clients: List[FedTSGenClient] = []
@@ -442,12 +442,12 @@ class FedTSGenClient(FedClientBase):
                     )
 
                 gen_ratio = self.gen_batch_size / self.args.local_bs
-                loss3 = protos.norm(dim=1).mean()
+                # loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
                     + self.args.lam * loss1
                     + gen_ratio * loss2
-                    + self.args.l2r_coeff * loss3
+                    # + self.args.l2r_coeff * loss3
                 )
                 loss.backward()
                 optimizer.step()

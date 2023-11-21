@@ -28,7 +28,10 @@ from data_loader import (
 from options import parse_args
 from tensorboardX import SummaryWriter
 
-from tools import write_client_datasets, write_client_label_distribution
+from tools import (
+    write_client_datasets,
+    write_client_label_distribution,
+)
 
 FL_CLIENT = {
     "FedStandAlone": FedStandAloneClient,
@@ -75,28 +78,28 @@ def read_training_data(training_data_json):
 
 LOADER_PATH_MAP = {
     "mnist": {
-        "train": "./train_cfg/mnist_train_client_20_dirichlet.json",
-        "test": "./train_cfg/mnist_test_client_20_dirichlet.json",
+        "train": "mnist_train_client_20_dirichlet.json",
+        "test": "mnist_test_client_20_dirichlet.json",
     },
     "emnist": {
-        "train": "./train_cfg/emnist_train_client_20_dirichlet.json",
-        "test": "./train_cfg/emnist_test_client_20_dirichlet.json",
+        "train": "emnist_train_client_20_dirichlet.json",
+        "test": "emnist_test_client_20_dirichlet.json",
     },
     "fmnist": {
-        "train": "./train_cfg/fmnist_train_client_20_dirichlet.json",
-        "test": "./train_cfg/fmnist_test_client_20_dirichlet.json",
+        "train": "fmnist_train_client_20_dirichlet.json",
+        "test": "fmnist_test_client_20_dirichlet.json",
     },
     "cifar": {
-        "train": "./train_cfg/cifar_train_client_20_dirichlet.json",
-        "test": "./train_cfg/cifar_test_client_20_dirichlet.json",
+        "train": "cifar_train_client_20_dirichlet.json",
+        "test": "cifar_test_client_20_dirichlet.json",
     },
     "cinic10": {
-        "train": "./train_cfg/cinic10_train_client_20_dirichlet.json",
-        "test": "./train_cfg/cinic10_test_client_20_dirichlet.json",
+        "train": "cinic10_train_client_20_dirichlet.json",
+        "test": "cinic10_test_client_20_dirichlet.json",
     },
     "cifar100": {
-        "train": "./train_cfg/cifar100_train_client_20_dirichlet.json",
-        "test": "./train_cfg/cifar100_test_client_20_dirichlet.json",
+        "train": "cifar100_train_client_20_dirichlet.json",
+        "test": "cifar100_test_client_20_dirichlet.json",
     },
 }
 
@@ -106,8 +109,14 @@ if __name__ == "__main__":
     if dataset not in LOADER_PATH_MAP:
         train_loaders, test_loaders = get_dataloaders(args)
     else:
+        train_path = os.path.join(
+            f"./train_cfg/beta_{args.beta}", LOADER_PATH_MAP[dataset]["train"]
+        )
+        test_path = os.path.join(
+            f"./train_cfg/beta_{args.beta}", LOADER_PATH_MAP[dataset]["test"]
+        )
         train_loaders, test_loaders = get_dataloaders_from_json(
-            args, LOADER_PATH_MAP[dataset]["train"], LOADER_PATH_MAP[dataset]["test"]
+            args, train_path, test_path
         )
     seed = 2023
     np.random.seed(seed)
@@ -204,6 +213,8 @@ if __name__ == "__main__":
     #     training_data=training_data, training_data_json=training_data_json
     # )
 
+    dists = []
+
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
             if idx in teacher_clients:
@@ -222,8 +233,8 @@ if __name__ == "__main__":
                 writer=writer,
             )
 
-            if idx in args.attackers:
-                client.train_loader.dataset.attack = True
+            # if idx in args.attackers:
+            #     client.train_loader.dataset.attack = True
 
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)
@@ -232,7 +243,10 @@ if __name__ == "__main__":
                     idx, writer, train_loader, args.num_classes, args.get_index
                 )
             local_clients.append(client)
+            # dists.append(client.label_distribution())
             bar.update(1)
+
+    # draw_label_dist(dists, args.num_classes)
 
     server = Server(
         args=args, global_model=student_model, clients=local_clients, writer=writer

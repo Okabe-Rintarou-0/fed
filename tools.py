@@ -309,6 +309,24 @@ def weight_flatten_cls(model: Dict[str, Any]):
     return params
 
 
+def draw_label_dist(dists: List[Dict[int, int]], num_classes: int):
+    plt.clf()
+    label_tot_cnts = [
+        sum([dists[idx][label] for label in range(num_classes)])
+        for idx in range(len(dists))
+    ]
+    for idx in range(len(dists)):
+        this_cnts = np.array([dists[idx][label] for label in range(num_classes)])
+        for label in range(num_classes):
+            label_radius = 80 * this_cnts[label] / label_tot_cnts[label]
+            plt.scatter([idx], [label], s=label_radius, color="red")
+    plt.xticks(range(len(dists)))
+    plt.yticks(range(num_classes))
+    plt.xlabel("Client")
+    plt.ylabel("Label")
+    plt.show()
+
+
 def cal_cosine_difference_vector(
     client_idxs: List[int],
     initial_global_parameters: Dict[str, Any],
@@ -323,13 +341,15 @@ def cal_cosine_difference_vector(
         dw[idx] = {}
         model_i = weights_map[idx]
         for key in model_i:
+            if "cls" not in key:
+                continue
             dw[idx][key] = model_i[key] - initial_global_parameters[key]
-        flatten_weights_map[idx] = weight_flatten_cls(model_i).unsqueeze(0)
+        flatten_weights_map[idx] = weight_flatten_cls(dw[idx]).unsqueeze(0)
 
     for i in range(num_clients):
         idx_i = client_idxs[i]
         flatten_weight_i = flatten_weights_map[idx_i]
-        for j in range(i+1, num_clients):
+        for j in range(i + 1, num_clients):
             idx_j = client_idxs[j]
             flatten_weight_j = flatten_weights_map[idx_j]
             diff = -torch.nn.functional.cosine_similarity(

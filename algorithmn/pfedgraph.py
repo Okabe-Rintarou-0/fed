@@ -10,7 +10,7 @@ import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from tools import aggregate_personalized_model, update_adjacency_matrix
+from tools import aggregate_personalized_model, aggregate_weights, update_adjacency_matrix
 
 # reference: https://github.com/MediaBrain-SJTU/pFedGraph
 
@@ -28,6 +28,7 @@ class PFedGraphServer(FedServerBase):
         self.aggregatable_weights = global_model.get_aggregatable_weights()
         num_clients = len(clients)
         self.adjacency_matrix = torch.ones((num_clients, num_clients)) / num_clients
+        self.teacher_clients = args.teacher_clients
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- pFedGraph Global Communication Round : {round} ----")
@@ -108,9 +109,12 @@ class PFedGraphServer(FedServerBase):
             self.aggregatable_weights,
         )
 
+        student_weights = aggregate_weights(student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
-            local_client.update_local_classifier(global_weight=agg_weights_map[idx])
+            local_client.update_local_classifier(agg_weights_map[idx])
             if local_client.idx in self.teacher_clients:
                 local_client.update_base_model(teacher_weights)
             else:
@@ -124,6 +128,18 @@ class PFedGraphServer(FedServerBase):
             loss_map={"loss_avg": loss_avg},
             acc_map={"acc_avg1": acc_avg1, "acc_avg2": acc_avg2},
         )
+
+        if self.args.model_het:
+            self.analyze_hm_losses(
+                idx_clients,
+                local_losses,
+                local_acc1s,
+                local_acc2s,
+                result,
+                self.args.ta_clients,
+                self.args.teacher_clients,
+            )
+
         if self.writer is not None:
             self.writer.add_scalars("clients_acc1", acc1_dict, round)
             self.writer.add_scalars("clients_acc2", acc2_dict, round)
