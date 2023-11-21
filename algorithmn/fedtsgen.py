@@ -46,12 +46,11 @@ class FedTSGenServer(FedServerBase):
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
         )
+        global_model.to(self.device)
         self.initial_global_weights = copy.deepcopy(global_model.state_dict())
 
         for client in clients:
             client.generator = self.generator
-
-        # self.augment_teacher()
 
         self.unique_labels = args.num_classes
         self.selected_clients: List[FedTSGenClient] = []

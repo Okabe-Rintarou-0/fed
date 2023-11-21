@@ -144,11 +144,9 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_agg_head"
     if args.entropy_agg:
         sub_dir_name = f"{sub_dir_name}_entropy_agg"
-    if args.with_prox:
-        sub_dir_name = f"{sub_dir_name}_with_prox"
 
     sub_dir_name = (
-        f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}"
+        f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}_beta_{args.beta}"
     )
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)

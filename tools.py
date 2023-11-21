@@ -376,7 +376,7 @@ def cal_cosine_difference_matrix(
         for key in model_i:
             if key in aggregatable_weights:
                 dw[idx][key] = model_i[key] - initial_global_parameters[key]
-        flatten_weights_map[idx] = weight_flatten_fc(dw[idx]).unsqueeze(0)
+        flatten_weights_map[idx] = weight_flatten_cls(dw[idx]).unsqueeze(0)
 
     for i in range(num_clients):
         idx_i = client_idxs[i]
