@@ -153,21 +153,6 @@ class FedClassAvgClient(FedClientBase):
         self.mse_loss = nn.MSELoss()
         self.mu = self.args.mu
 
-    def local_test(self) -> float:
-        model = self.local_model
-        model.eval()
-        device = self.args.device
-        correct = 0
-        total = len(self.test_loader.dataset)
-        with torch.no_grad():
-            for inputs, labels in self.test_loader:
-                inputs, labels = inputs[0].to(device), labels.to(device)
-                _, outputs = model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                correct += (predicted == labels).sum().item()
-        acc = 100.0 * correct / total
-        return acc
-
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model

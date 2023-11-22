@@ -434,7 +434,7 @@ def emnist_noniid_dirichlet(
 
 
 def fmnist_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
-    transform = transforms.Compose(
+    train_transform = test_transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
     if double_trans:
@@ -446,21 +446,20 @@ def fmnist_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
                     [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
                 ),
                 transforms.RandomGrayscale(p=0.2),
-                transforms.ToTensor(),
-                transform,
+                train_transform,
             ]
         )
-        transform = DoubleTransform(crop_transforms)
+        train_transform = DoubleTransform(crop_transforms)
     trainset = datasets.FashionMNIST(
         "data",
         train=True,
         download=True,
-        transform=transform,
+        transform=train_transform,
     )
     testset = datasets.FashionMNIST(
         "data",
         train=False,
-        transform=transform,
+        transform=test_transform,
     )
     return trainset, testset
 
