@@ -16,7 +16,7 @@ from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
-from algorithmn.fedtsgen import FedTSGenClient, FedTSGenServer
+from algorithmn.fedts import FedTSClient, FedTSServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 from algorithmn.transform import DoubleTransform
@@ -46,7 +46,7 @@ FL_CLIENT = {
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
     "FedGen": FedGenClient,
-    "FedTSGen": FedTSGenClient,
+    "FedTSGen": FedTSClient,
     "FedClassAvg": FedClassAvgClient,
 }
 
@@ -62,7 +62,7 @@ FL_SERVER = {
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
     "FedGen": FedGenServer,
-    "FedTSGen": FedTSGenServer,
+    "FedTSGen": FedTSServer,
     "FedClassAvg": FedClassAvgServer,
 }
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         train_loaders, test_loaders = get_dataloaders_from_json(
             args, train_path, test_path
         )
-        
+
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)

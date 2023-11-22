@@ -23,7 +23,7 @@ from tools import (
 )
 
 
-class FedTSGenServer(FedServerBase):
+class FedTSServer(FedServerBase):
     def __init__(
         self,
         args: Namespace,
@@ -47,7 +47,7 @@ class FedTSGenServer(FedServerBase):
             client.generator = self.generator
 
         self.unique_labels = args.num_classes
-        self.selected_clients: List[FedTSGenClient] = []
+        self.selected_clients: List[FedTSClient] = []
 
         self.generative_optimizer = torch.optim.Adam(
             params=self.generator.parameters(),
@@ -159,7 +159,7 @@ class FedTSGenServer(FedServerBase):
         print("done.")
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
-        print(f"\n---- FedTSGen Global Communication Round : {round} ----")
+        print(f"\n---- FedTS Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
         m = max(int(self.args.frac * num_clients), 1)
         if round >= self.args.epochs:
@@ -192,7 +192,7 @@ class FedTSGenServer(FedServerBase):
         teacher_label_sizes = []
         self.selected_clients = []
         for idx in idx_clients:
-            local_client: FedTSGenClient = self.clients[idx]
+            local_client: FedTSClient = self.clients[idx]
             self.selected_clients.append(local_client)
             local_epoch = self.args.local_epoch
             result = local_client.local_train(local_epoch=local_epoch, round=round)
@@ -301,7 +301,7 @@ class FedTSGenServer(FedServerBase):
         return result
 
 
-class FedTSGenClient(FedClientBase):
+class FedTSClient(FedClientBase):
     def __init__(
         self,
         idx: int,

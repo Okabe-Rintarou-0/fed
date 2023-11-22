@@ -438,7 +438,19 @@ def fmnist_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
     if double_trans:
-        transform = DoubleTransform(transform)
+        crop_transforms = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(size=28, scale=(0.2, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomApply(
+                    [transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8
+                ),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.ToTensor(),
+                transform,
+            ]
+        )
+        transform = DoubleTransform(crop_transforms)
     trainset = datasets.FashionMNIST(
         "data",
         train=True,
