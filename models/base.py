@@ -11,6 +11,9 @@ class FedModel(nn.Module):
     def classifier(self, z):
         pass
 
+    def featurize(self, x):
+        pass
+
     def num_flat_features(self, x):
         size = x.size()[1:]
         num_features = 1

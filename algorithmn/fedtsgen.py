@@ -14,7 +14,6 @@ import torch.nn.functional as F
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from data_loader import AUGMENT_TRANSFORM
 from models.base import FedModel
-import matplotlib.pyplot as plt
 from models.generator import Generator
 from tools import (
     aggregate_weights,
@@ -22,10 +21,6 @@ from tools import (
     get_protos,
     optimize_collaborate_vector,
 )
-
-
-def sin_growth(alpha, epoch, max_epoch):
-    return alpha * math.sin(math.pi / 2 * epoch / max_epoch)
 
 
 class FedTSGenServer(FedServerBase):
@@ -42,7 +37,6 @@ class FedTSGenServer(FedServerBase):
         self.teacher_clients = args.teacher_clients
         self.alpha = args.alpha
         self.max_round = args.epochs
-        self.kpca = KernelPCA(n_components=2)
         self.generator = Generator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
         )
@@ -164,38 +158,6 @@ class FedTSGenServer(FedServerBase):
                 self.generative_optimizer.step()
         print("done.")
 
-    def augment_teacher(self):
-        if len(self.teacher_clients) == 0:
-            return
-
-        num_labels = self.args.num_classes
-        aug_percent = self.args.augment_percent
-        label_avg_cnts = self.compute_avg_client_label_cnts()
-
-        print("before augment:", label_avg_cnts)
-
-        for t_idx in self.teacher_clients:
-            teacher: FedTSGenClient = self.clients[t_idx]
-            labels_to_aug = []
-            labels_aug_num = []
-            for label in range(num_labels):
-                my_labels = teacher.label_cnts[label]
-                if my_labels < label_avg_cnts:
-                    to_aug = min(
-                        label_avg_cnts - my_labels, int(my_labels * aug_percent)
-                    )
-                    labels_to_aug.append(label)
-                    labels_aug_num.append(to_aug)
-
-            print(labels_to_aug, labels_aug_num)
-            teacher.train_loader.dataset.do_augment(
-                labels_to_aug, labels_aug_num, AUGMENT_TRANSFORM
-            )
-            teacher.label_cnts = teacher.label_distribution()
-
-        label_avg_cnts = self.compute_avg_client_label_cnts()
-        print("after augment:", label_avg_cnts)
-
     def train_one_round(self, round: int) -> GlobalTrainResult:
         print(f"\n---- FedTSGen Global Communication Round : {round} ----")
         num_clients = self.args.num_clients
@@ -209,7 +171,6 @@ class FedTSGenServer(FedServerBase):
         local_acc1s = []
         local_acc2s = []
         local_weights = []
-        local_protos = []
         local_agg_weights = []
         local_weights_map = {}
 
@@ -224,12 +185,10 @@ class FedTSGenServer(FedServerBase):
         teacher_agg_weights = []
 
         student_accs = []
-        student_protos = []
         student_label_sizes = []
 
         label_sizes = []
         teacher_accs = []
-        teacher_protos = []
         teacher_label_sizes = []
         self.selected_clients = []
         for idx in idx_clients:
@@ -441,12 +400,12 @@ class FedTSGenClient(FedClientBase):
                     )
 
                 gen_ratio = self.gen_batch_size / self.args.local_bs
-                # loss3 = protos.norm(dim=1).mean()
+                loss3 = protos.norm(dim=1).mean()
                 loss = (
                     loss0
                     + self.args.lam * loss1
                     + gen_ratio * loss2
-                    # + self.args.l2r_coeff * loss3
+                    + self.args.l2r_coeff * loss3
                 )
                 loss.backward()
                 optimizer.step()

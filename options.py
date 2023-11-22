@@ -57,6 +57,12 @@ def parse_args() -> argparse.Namespace:
         default=0.01,
         help="Proximal term",
     )
+    parser.add_argument(
+        "--cont_weight",
+        type=float,
+        default=0.001,
+        help="cont loss weight",
+    )
     parser.add_argument("--attack", action="store_true")
     parser.add_argument("--attack_percent", type=float, default=0.2)
     parser.add_argument("--attack_type", type=str, default="inv_grad")

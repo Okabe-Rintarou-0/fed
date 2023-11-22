@@ -71,6 +71,21 @@ class ResNetBase(FedModel):
         y = self.cls(z)
         return y
 
+    def featurize(self, x):
+        x = self.backbone(x)
+
+        if not self.probabilistic:
+            z = F.leaky_relu(x)
+        else:
+            z_params = x
+            z_mu = z_params[:, : self.z_dim]
+            z_sigma = F.softplus(z_params[:, self.z_dim :])
+            z_dist = distributions.Independent(
+                distributions.normal.Normal(z_mu, z_sigma), 1
+            )
+            z = z_dist.rsample([self.num_samples]).view([-1, self.z_dim])
+        return z
+
     def get_aggregatable_weights(self) -> List[str]:
         if not self.model_het:
             return self.all_keys

@@ -5,6 +5,7 @@ import random
 import numpy as np
 import torch
 from tqdm import tqdm
+from algorithmn.fedclassavg import FedClassAvgClient, FedClassAvgServer
 from algorithmn.fedgen import FedGenClient, FedGenServer
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
@@ -16,9 +17,9 @@ from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.fedtsgen import FedTSGenClient, FedTSGenServer
-from algorithmn.fedtts import FedTTSClient, FedTTSServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
+from algorithmn.transform import DoubleTransform
 
 from data_loader import (
     get_dataloaders,
@@ -44,9 +45,9 @@ FL_CLIENT = {
     "FedSR": FedSRClient,
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
-    "FedTTS": FedTTSClient,
     "FedGen": FedGenClient,
     "FedTSGen": FedTSGenClient,
+    "FedClassAvg": FedClassAvgClient,
 }
 
 FL_SERVER = {
@@ -60,9 +61,9 @@ FL_SERVER = {
     "FedSR": FedSRServer,
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
-    "FedTTS": FedTTSServer,
     "FedGen": FedGenServer,
     "FedTSGen": FedTSGenServer,
+    "FedClassAvg": FedClassAvgServer,
 }
 
 
@@ -118,6 +119,7 @@ if __name__ == "__main__":
         train_loaders, test_loaders = get_dataloaders_from_json(
             args, train_path, test_path
         )
+        
     seed = 2023
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -145,9 +147,7 @@ if __name__ == "__main__":
     if args.entropy_agg:
         sub_dir_name = f"{sub_dir_name}_entropy_agg"
 
-    sub_dir_name = (
-        f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}_beta_{args.beta}"
-    )
+    sub_dir_name = f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}_beta_{args.beta}"
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 1

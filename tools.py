@@ -9,7 +9,6 @@ import torchvision
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
-from algorithmn.cka import CKA
 from models import CifarCNN
 
 
@@ -392,59 +391,6 @@ def cal_cosine_difference_matrix(
     return difference_matrix
 
 
-def cal_protos_diff_vector(
-    protos: List[torch.Tensor], teacher_proto: torch.Tensor, device="cpu"
-):
-    # cka = CKA(device=device)
-    diff = []
-    flatten_teacher_proto = teacher_proto.view(-1)
-    for proto in protos:
-        diff.append(
-            -torch.nn.functional.cosine_similarity(
-                proto.view(-1), flatten_teacher_proto, dim=0
-            )
-        )
-    return torch.tensor(diff)
-
-
-def cal_dist_avg_difference_vector(
-    client_idxs: List[int],
-    weights_map: Dict[int, Dict[str, Any]],
-):
-    mus = []
-    sigmas = []
-    num_clients = len(client_idxs)
-    for client_idx in client_idxs:
-        this_weights = weights_map[client_idx]
-        this_mu = this_weights.get("r.mu")
-        this_sigma = this_weights.get("r.sigma")
-        mus.append(this_mu)
-        sigmas.append(this_sigma)
-
-    dist_avg_difference_vector = []
-    for i in range(num_clients):
-        mu1 = mus[i]
-        sigma1 = sigmas[i]
-        kl_div = 0
-        for j in range(num_clients):
-            if i == j:
-                continue
-            mu2 = mus[j]
-            sigma2 = sigmas[j]
-            this_kl_div = (
-                torch.log(sigma2 / sigma1)
-                + (sigma1**2 + (mu1 - mu2) ** 2) / (2 * sigma2**2)
-                - 0.5
-            )
-            kl_div += this_kl_div.mean()
-        dist_avg_difference_vector.append(kl_div)
-    dist_avg_difference_vector = torch.tensor(
-        dist_avg_difference_vector, dtype=torch.float
-    )
-    dist_avg_difference_vector /= torch.max(dist_avg_difference_vector) + 1e-10
-    return F.softmax(dist_avg_difference_vector, dim=0)
-
-
 def optimize_collaborate_vector(
     difference_vector: torch.Tensor,
     alpha: float,
@@ -467,22 +413,6 @@ def optimize_collaborate_vector(
     )
     prob.solve()
     return torch.Tensor(x.value)
-
-
-def update_collaborate_vector(
-    client_idxs: List[int],
-    weights_map: Dict[int, Dict[str, Any]],
-    agg_weights: List[float],
-    alpha: float,
-):
-    print("alpha", alpha)
-    print("old agg", agg_weights)
-    difference_vector = cal_dist_avg_difference_vector(client_idxs, weights_map)
-    collabrate_vector = optimize_collaborate_vector(
-        difference_vector, alpha, agg_weights
-    )
-    print("new agg", collabrate_vector)
-    return collabrate_vector
 
 
 def optimize_adjacency_matrix(

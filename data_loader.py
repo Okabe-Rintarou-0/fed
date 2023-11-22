@@ -8,6 +8,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
+from algorithmn.transform import DoubleTransform
 from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 from pytorch_cinic.dataset import CINIC10
@@ -432,22 +433,22 @@ def emnist_noniid_dirichlet(
     return gen_data_loaders(dataset, client_idxs, batch_size, shuffle, get_index)
 
 
-def fmnist_dataset() -> Tuple[Dataset, Dataset]:
+def fmnist_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    if double_trans:
+        transform = DoubleTransform(transform)
     trainset = datasets.FashionMNIST(
         "data",
         train=True,
         download=True,
-        transform=transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        ),
+        transform=transform,
     )
-
     testset = datasets.FashionMNIST(
         "data",
         train=False,
-        transform=transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        ),
+        transform=transform,
     )
     return trainset, testset
 
@@ -455,7 +456,7 @@ def fmnist_dataset() -> Tuple[Dataset, Dataset]:
 def emnist_dataset() -> Tuple[Dataset, Dataset]:
     trainset = datasets.EMNIST(
         "data",
-        split="byclass",
+        split="letters",
         train=True,
         download=True,
         transform=transforms.Compose(
@@ -465,7 +466,7 @@ def emnist_dataset() -> Tuple[Dataset, Dataset]:
 
     testset = datasets.EMNIST(
         "data",
-        split="byclass",
+        split="letters",
         train=False,
         transform=transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
@@ -662,6 +663,7 @@ def get_dataloaders_from_json(
     dataset = args.dataset
     local_bs = args.local_bs
     get_index = args.get_index
+    double_trans = args.train_rule == "FedClassAvg"
     if dataset in ["cifar", "cifar10"]:
         trainset, testset = cifar10_dataset()
     elif dataset in ["cinic10", "cinic"]:
@@ -671,7 +673,7 @@ def get_dataloaders_from_json(
     elif dataset == "mnist":
         trainset, testset = mnist_dataset()
     elif dataset == "fmnist":
-        trainset, testset = fmnist_dataset()
+        trainset, testset = fmnist_dataset(double_trans)
     elif dataset == "emnist":
         trainset, testset = emnist_dataset()
     else:
