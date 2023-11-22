@@ -93,10 +93,10 @@ def gen_data_loaders(
     get_index: bool,
 ):
     # if shuffle:
-    #     with open("./train_cfg/fmnist_train_client_20_dirichle_2.json", "w") as f:
+    #     with open("./train_cfg/beta_2.0/cifar_train_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     # else:
-    #     with open("./train_cfg/fmnist_test_client_20_dirichlet_2.json", "w") as f:
+    #     with open("./train_cfg/beta_2.0/cifar_test_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
@@ -528,7 +528,7 @@ def cinic10_dataset() -> Tuple[Dataset, Dataset]:
     return trainset, testset
 
 
-def cifar10_dataset() -> Tuple[Dataset, Dataset]:
+def cifar10_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
     transform_train = transforms.Compose(
         [
             transforms.RandomCrop(32, padding=4),
@@ -544,6 +544,9 @@ def cifar10_dataset() -> Tuple[Dataset, Dataset]:
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ]
     )
+
+    if double_trans:
+        transform_train = DoubleTransform(transform_train)
 
     trainset = datasets.CIFAR10(
         root="data", train=True, download=True, transform=transform_train
@@ -676,7 +679,7 @@ def get_dataloaders_from_json(
     get_index = args.get_index
     double_trans = args.train_rule == "FedClassAvg"
     if dataset in ["cifar", "cifar10"]:
-        trainset, testset = cifar10_dataset()
+        trainset, testset = cifar10_dataset(double_trans)
     elif dataset in ["cinic10", "cinic"]:
         trainset, testset = cinic10_dataset()
     elif dataset == "cifar100":
