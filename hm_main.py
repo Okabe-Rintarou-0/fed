@@ -94,10 +94,10 @@ LOADER_PATH_MAP = {
         "train": "cifar_train_client_20_dirichlet.json",
         "test": "cifar_test_client_20_dirichlet.json",
     },
-    # "cinic10": {
-    #     "train": "cinic10_train_client_20_dirichlet.json",
-    #     "test": "cinic10_test_client_20_dirichlet.json",
-    # },
+    "cinic10": {
+        "train": "cinic10_train_client_20_dirichlet.json",
+        "test": "cinic10_test_client_20_dirichlet.json",
+    },
     "cifar100": {
         "train": "cifar100_train_client_20_dirichlet.json",
         "test": "cifar100_test_client_20_dirichlet.json",
