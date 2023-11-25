@@ -24,6 +24,7 @@ class PFedGraphServer(FedServerBase):
         writer: SummaryWriter | None = None,
     ):
         super().__init__(args, global_model, clients, writer)
+        global_model.to(self.device)
         self.initial_global_parameters = global_model.state_dict()
         self.aggregatable_weights = global_model.get_aggregatable_weights()
         num_clients = len(clients)
