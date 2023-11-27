@@ -10,7 +10,11 @@ import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from tools import aggregate_personalized_model, aggregate_weights, update_adjacency_matrix
+from tools import (
+    aggregate_personalized_model,
+    aggregate_weights,
+    update_adjacency_matrix,
+)
 
 # reference: https://github.com/MediaBrain-SJTU/pFedGraph
 
@@ -99,9 +103,6 @@ class PFedGraphServer(FedServerBase):
             self.aggregatable_weights,
         )
 
-        if self.args.attack:
-            self.do_attack()
-
         # aggregate personalized model
         agg_weights_map = aggregate_personalized_model(
             idx_clients,
@@ -137,8 +138,7 @@ class PFedGraphServer(FedServerBase):
                 local_acc1s,
                 local_acc2s,
                 result,
-                self.args.ta_clients,
-                self.args.teacher_clients,
+                self.teacher_clients,
             )
 
         if self.writer is not None:

@@ -7,7 +7,6 @@ import torch
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from torch.utils.data import DataLoader
 from torch import nn
-from attack import manipulate_one_model
 from models.base import FedModel
 
 from tools import calc_label_distribution
@@ -33,8 +32,6 @@ class FedClientBase:
         self.device = args.device
         self.criterion = nn.CrossEntropyLoss()
         self.global_protos = None
-
-        self.attack = self.idx in args.attackers
 
     @abstractmethod
     def label_distribution(self):
@@ -128,7 +125,6 @@ class FedServerBase:
         local_acc1s,
         local_acc2s,
         result: GlobalTrainResult,
-        ta_clients,
         teacher_clients,
     ):
         num_clients = len(client_idxs)
@@ -146,11 +142,7 @@ class FedServerBase:
             round_loss = round_losses[i]
             acc1 = local_acc1s[i]
             acc2 = local_acc2s[i]
-            if client_idx in ta_clients:
-                ta_losses.append(round_loss)
-                ta_acc1s.append(acc1)
-                ta_acc2s.append(acc2)
-            elif client_idx in teacher_clients:
+            if client_idx in teacher_clients:
                 teacher_losses.append(round_loss)
                 teacher_acc1s.append(acc1)
                 teacher_acc2s.append(acc2)
@@ -175,11 +167,3 @@ class FedServerBase:
     @abstractmethod
     def train_one_round(self, round: int):
         pass
-
-    @abstractmethod
-    def do_attack(self):
-        for client in self.clients:
-            if client.attack:
-                manipulate_one_model(
-                    self.args, client.local_model, client.idx, self.global_model
-                )

@@ -37,11 +37,10 @@ AUGMENT_TRANSFORM = transforms.Compose(
 
 
 class DatasetSplit(Dataset):
-    def __init__(self, dataset, index=None, get_index=False, attack=False):
+    def __init__(self, dataset, index=None, get_index=False):
         super().__init__()
         self.get_index = get_index
         self.dataset = dataset
-        self.attack = attack
         self.idxs = (
             [int(i) for i in index]
             if index is not None
@@ -78,8 +77,6 @@ class DatasetSplit(Dataset):
         else:
             x, label = self.augment_set[index - len(self.idxs)]
 
-        if self.attack:
-            label = random.randint(0, label)
         if self.get_index:
             return x, label, index
         return x, label
@@ -915,11 +912,6 @@ def get_model(args: Namespace) -> nn.Module:
             model_het=model_het,
             z_dim=z_dim,
         )
-    elif dataset == "fmnist":
-        global_model = CNN_FMNIST()
-    elif dataset == "emnist":
-        args.num_classes = 62
-        global_model = CNN_FMNIST(num_classes=num_classes)
     else:
         raise NotImplementedError()
     return global_model.to(device)
@@ -945,23 +937,17 @@ def get_heterogeneous_model(args: Namespace) -> nn.Module:
     return heterogeneous_model
 
 
-# get_models returns (student model, ta model, and teacher model)
-def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
+# get_models returns (student model and teacher model)
+def get_models(args: Namespace) -> Tuple[FedModel, FedModel]:
     dataset = args.dataset
     num_classes = args.num_classes
     prob = args.prob
     z_dim = args.z_dim
     model_het = args.model_het
-    student, ta, teacher = None, None, None
+    student, teacher = None, None
 
     if dataset == "mnist":
         student = MNISTMLP(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
-        ta = MNISTCNN(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
@@ -980,12 +966,6 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-        ta = MNISTCNN(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
         teacher = FMNISTResNet(
             num_classes=num_classes,
             probabilistic=prob,
@@ -994,12 +974,6 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
         )
     elif dataset == "emnist":
         student = FMNISTMLP(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
-        ta = MNISTCNN(
             num_classes=num_classes,
             probabilistic=prob,
             model_het=model_het,
@@ -1018,12 +992,6 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
             model_het=model_het,
             z_dim=z_dim,
         )
-        ta = CifarCNN(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
         teacher = CifarResNet(
             num_classes=num_classes,
             probabilistic=prob,
@@ -1032,4 +1000,4 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel, FedModel]:
         )
     else:
         raise NotImplementedError()
-    return student, ta, teacher
+    return student, teacher

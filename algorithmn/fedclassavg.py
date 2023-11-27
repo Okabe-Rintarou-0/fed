@@ -79,9 +79,6 @@ class FedClassAvgServer(FedServerBase):
             acc2_dict[f"client_{idx}"] = local_acc2
             loss_dict[f"client_{idx}"] = local_loss
 
-        if self.args.attack:
-            self.do_attack()
-
         classfier_weights = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
@@ -118,8 +115,7 @@ class FedClassAvgServer(FedServerBase):
                 local_acc1s,
                 local_acc2s,
                 result,
-                self.args.ta_clients,
-                self.args.teacher_clients,
+                self.teacher_clients,
             )
 
         if self.writer is not None:

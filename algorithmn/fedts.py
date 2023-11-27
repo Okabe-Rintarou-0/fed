@@ -33,7 +33,6 @@ class FedTSServer(FedServerBase):
     ):
         super().__init__(args, global_model, clients, writer)
         self.client_aggregatable_weights = global_model.get_aggregatable_weights()
-        self.ta_clients = args.ta_clients
         self.teacher_clients = args.teacher_clients
         self.alpha = args.alpha
         self.max_round = args.epochs
@@ -288,8 +287,7 @@ class FedTSServer(FedServerBase):
                 local_acc1s,
                 local_acc2s,
                 result,
-                self.args.ta_clients,
-                self.args.teacher_clients,
+                self.teacher_clients,
             )
 
         if self.writer is not None:
@@ -335,7 +333,6 @@ class FedTSClient(FedClientBase):
         self.gen_batch_size = self.args.gen_batch_size
         print(f"client {self.idx} label distribution: {self.label_cnts}")
         print(f"client {self.idx} unqualified labels: {self.unqualified_labels}")
-        self.is_attacker = self.idx in args.attackers
 
     def get_local_protos(self):
         model = self.local_model

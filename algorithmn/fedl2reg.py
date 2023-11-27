@@ -114,8 +114,7 @@ class FedL2RegServer(FedServerBase):
                 local_acc1s,
                 local_acc2s,
                 result,
-                self.args.ta_clients,
-                self.args.teacher_clients,
+                self.teacher_clients,
             )
 
         if self.writer is not None:

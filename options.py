@@ -33,7 +33,6 @@ def parse_args() -> argparse.Namespace:
         "--record_client_data", action="store_true", help="Record label distribution"
     )
     parser.add_argument("--teacher_percent", default=0, type=float)
-    parser.add_argument("--ta_percent", default=0, type=float)
     parser.add_argument("--start_round", type=int, default=0)
     parser.add_argument(
         "--device",
@@ -63,9 +62,6 @@ def parse_args() -> argparse.Namespace:
         default=0.001,
         help="cont loss weight",
     )
-    parser.add_argument("--attack", action="store_true")
-    parser.add_argument("--attack_percent", type=float, default=0.2)
-    parser.add_argument("--attack_type", type=str, default="inv_grad")
     parser.add_argument(
         "--gen_batch_size",
         type=int,
@@ -142,9 +138,5 @@ def parse_args() -> argparse.Namespace:
     elif args.dataset == "cifar100":
         args.num_classes = 100
 
-    if not args.attack:
-        args.attack_type = "none"
-    args.attackers = []
-    args.ta_clients = []
     args.teacher_clients = []
     return args

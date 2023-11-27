@@ -66,26 +66,7 @@ FL_SERVER = {
     "FedClassAvg": FedClassAvgServer,
 }
 
-
-def write_training_data(training_data, training_data_json):
-    with open(training_data_json, "w") as f:
-        f.write(json.dumps(training_data))
-
-
-def read_training_data(training_data_json):
-    with open(training_data_json, "r") as f:
-        return json.loads(f.read())
-
-
 LOADER_PATH_MAP = {
-    "mnist": {
-        "train": "mnist_train_client_20_dirichlet.json",
-        "test": "mnist_test_client_20_dirichlet.json",
-    },
-    "emnist": {
-        "train": "emnist_train_client_20_dirichlet.json",
-        "test": "emnist_test_client_20_dirichlet.json",
-    },
     "fmnist": {
         "train": "fmnist_train_client_20_dirichlet.json",
         "test": "fmnist_test_client_20_dirichlet.json",
@@ -97,10 +78,6 @@ LOADER_PATH_MAP = {
     "cinic10": {
         "train": "cinic10_train_client_20_dirichlet.json",
         "test": "cinic10_test_client_20_dirichlet.json",
-    },
-    "cifar100": {
-        "train": "cifar100_train_client_20_dirichlet.json",
-        "test": "cifar100_test_client_20_dirichlet.json",
     },
 }
 
@@ -127,7 +104,7 @@ if __name__ == "__main__":
 
     args.model_het = True
 
-    student_model, ta_model, teacher_model = get_models(args)
+    student_model, teacher_model = get_models(args)
 
     train_rule = args.train_rule
     # Set up tensorboard summary writer
@@ -140,14 +117,14 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
-    if args.attack:
-        sub_dir_name = f"{sub_dir_name}_attack"
     if args.agg_head:
         sub_dir_name = f"{sub_dir_name}_agg_head"
     if args.entropy_agg:
         sub_dir_name = f"{sub_dir_name}_entropy_agg"
 
-    sub_dir_name = f"{sub_dir_name}_{args.dataset}_ta_{args.ta_percent}_te_{args.teacher_percent}_beta_{args.beta}"
+    sub_dir_name = (
+        f"{sub_dir_name}_{args.dataset}_te_{args.teacher_percent}_beta_{args.beta}"
+    )
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 1
@@ -185,7 +162,6 @@ if __name__ == "__main__":
     local_accs1, local_accs2 = [], []
     local_clients = []
 
-    attack_clients = []
     client_idxs = list(range(args.num_clients))
 
     client_idx_set = set(client_idxs)
@@ -193,25 +169,6 @@ if __name__ == "__main__":
     teacher_clients = list(range(teacher_num))
     args.teacher_clients = teacher_clients
     print("teacher clients:", teacher_clients)
-
-    if args.attack:
-        sample_size = int(args.attack_percent * args.num_clients)
-        attack_clients = random.sample(client_idxs, sample_size)
-        args.attackers = attack_clients
-        print(f"attack clients: {attack_clients}, attack type: {args.attack_type}")
-
-    training_data = {
-        "round": 0,
-        "teacher_clients": teacher_clients,
-        "attack_clients": attack_clients,
-        "attack_type": args.attack_type,
-    }
-
-    # write_training_data(
-    #     training_data=training_data, training_data_json=training_data_json
-    # )
-
-    dists = []
 
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
@@ -230,9 +187,6 @@ if __name__ == "__main__":
                 local_model=local_model.to(args.device),
                 writer=writer,
             )
-
-            # if idx in args.attackers:
-            #     client.train_loader.dataset.attack = True
 
             if args.record_client_data:
                 write_client_datasets(idx, writer, train_loader, True, args.get_index)
@@ -272,8 +226,5 @@ if __name__ == "__main__":
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
             training_data["round"] = round
-            # write_training_data(
-            #     training_data=training_data, training_data_json=training_data_json
-            # )
             weights_path = os.path.join(weights_dir, f"global_ckpt_{round}.pth")
             torch.save(server.global_model.state_dict(), weights_path)

@@ -89,8 +89,6 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
-    if args.attack:
-        sub_dir_name = f"{sub_dir_name}_attack"
 
     sub_dir_name = f"{sub_dir_name}_{args.dataset}"
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
@@ -120,20 +118,7 @@ if __name__ == "__main__":
     local_accs1, local_accs2 = [], []
     local_clients = []
 
-    attack_clients = []
     client_idxs = list(range(args.num_clients))
-
-    if args.attack:
-        sample_size = int(args.attack_percent * args.num_clients)
-        attack_clients = random.sample(client_idxs, sample_size)
-        args.attackers = attack_clients
-        print(f"attack clients: {attack_clients}, attack type: {args.attack_type}")
-
-    training_data = {
-        "round": 0,
-        "attack_clients": attack_clients,
-        "attack_type": args.attack_type,
-    }
 
     # write_training_data(
     #     training_data=training_data, training_data_json=training_data_json
