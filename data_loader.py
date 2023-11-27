@@ -12,7 +12,7 @@ from algorithmn.transform import DoubleTransform
 from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 from pytorch_cinic.dataset import CINIC10
-from models.cnn import CNN_FMNIST, MNISTCNN, CifarCNN, CifarCNN2
+from models.cnn import CifarCNN
 from models.mlp import FMNISTMLP, MNISTMLP, CifarMLP
 from models.resnet import (
     CifarResNet,
