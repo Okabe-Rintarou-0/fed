@@ -1,7 +1,6 @@
 from copy import deepcopy
 import json
 import os
-import random
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -46,7 +45,7 @@ FL_CLIENT = {
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
     "FedGen": FedGenClient,
-    "FedTSGen": FedTSClient,
+    "FedTS": FedTSClient,
     "FedClassAvg": FedClassAvgClient,
 }
 
@@ -62,7 +61,7 @@ FL_SERVER = {
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
     "FedGen": FedGenServer,
-    "FedTSGen": FedTSServer,
+    "FedTS": FedTSServer,
     "FedClassAvg": FedClassAvgServer,
 }
 
@@ -225,6 +224,5 @@ if __name__ == "__main__":
                 )
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
-            training_data["round"] = round
             weights_path = os.path.join(weights_dir, f"global_ckpt_{round}.pth")
             torch.save(server.global_model.state_dict(), weights_path)

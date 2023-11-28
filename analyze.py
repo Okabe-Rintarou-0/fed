@@ -16,7 +16,7 @@ from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
-from algorithmn.fedtsgen import FedTSGenClient, FedTSGenServer
+from algorithmn.fedts import FedTSGenClient, FedTSGenServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 

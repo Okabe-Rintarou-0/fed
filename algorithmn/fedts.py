@@ -55,12 +55,6 @@ class FedTSServer(FedServerBase):
             eps=1e-08,
             amsgrad=False,
         )
-        self.generative_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer=self.generative_optimizer, gamma=0.98
-        )
-        self.ensemble_alpha = 1
-        self.ensemble_beta = 1
-        self.ensemble_eta = 1
 
     def compute_avg_client_label_cnts(self):
         num_labels = self.args.num_classes
@@ -330,7 +324,11 @@ class FedTSClient(FedClientBase):
             for label in range(self.available_labels)
             if self.label_cnts[label] < avg_label_cnts
         ]
-        self.gen_batch_size = self.args.gen_batch_size
+        gen_ratio = args.gen_batch_size / args.local_bs
+        self.lam1 = args.lam1
+        self.lam2 = args.lam2
+        self.lam3 = args.lam3 * gen_ratio
+        self.lam4 = args.lam4
         print(f"client {self.idx} label distribution: {self.label_cnts}")
         print(f"client {self.idx} unqualified labels: {self.unqualified_labels}")
 
@@ -374,14 +372,14 @@ class FedTSClient(FedClientBase):
                 images, labels = images.to(self.device), labels.to(self.device)
                 model.zero_grad()
                 protos, output = model(images)
-                loss0 = self.criterion(output, labels)
-                loss1 = loss2 = loss3 = 0
+                loss1 = self.criterion(output, labels)
+                loss2 = loss3 = loss4 = 0
                 self.generator.to(self.device)
                 if round > 0:
                     gen_protos, _ = self.generator(labels)
 
                     # latent presentation loss
-                    loss1 = self.mse_loss(protos, gen_protos)
+                    loss2 = self.mse_loss(protos, gen_protos)
 
                     # classifier loss
                     sampled_y = torch.tensor(
@@ -392,17 +390,16 @@ class FedTSClient(FedClientBase):
                     )
                     gen_output, _ = self.generator(sampled_y)
                     output = self.local_model.classifier(gen_output)
-                    loss2 = torch.mean(
+                    loss3 = torch.mean(
                         self.generator.crossentropy_loss(output, sampled_y)
                     )
 
-                gen_ratio = self.gen_batch_size / self.args.local_bs
-                loss3 = protos.norm(dim=1).mean()
+                loss4 = protos.norm(dim=1).mean()
                 loss = (
-                    loss0
-                    + self.args.lam * loss1
-                    + gen_ratio * loss2
-                    + self.args.l2r_coeff * loss3
+                    self.lam1 * loss1
+                    + self.lam2 * loss2
+                    + self.lam3 * loss3
+                    + self.lam4 * loss4
                 )
                 loss.backward()
                 optimizer.step()

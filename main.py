@@ -1,8 +1,6 @@
 from copy import deepcopy
 import json
 import os
-import random
-
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -172,7 +170,6 @@ if __name__ == "__main__":
                 )
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
-            training_data["round"] = round
             # write_training_data(
             #     training_data=training_data, training_data_json=training_data_json
             # )
