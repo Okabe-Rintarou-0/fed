@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
         "--lam4", type=float, default=1e-2, help="coefficient for reg term"
     )
     parser.add_argument(
+        "--backbone",
+        type=str,
+        default='resnet18',
+    )
+    parser.add_argument(
         "--record_client_data", action="store_true", help="Record label distribution"
     )
     parser.add_argument("--teacher_percent", default=0, type=float)
@@ -60,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--eta",
         type=float,
-        default=2.0,
+        default=4.0,
     )
     parser.add_argument(
         "--mu",
@@ -83,7 +88,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--alpha",
         type=float,
-        default=0.4,
+        default=0.05,
         help="Hyper-parameter to avoid concentration",
     )
     parser.add_argument(
@@ -97,11 +102,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Use heterogeneous model",
-    )
-    parser.add_argument(
-        "--agg_head",
-        action="store_true",
-        default=False,
     )
     parser.add_argument(
         "--domain_het",
@@ -119,10 +119,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--get_index", type=bool, default=False, help="Get index of loader"
     )
-    parser.add_argument(
-        "--augment_percent", type=float, default=2, help="Augment percent"
-    )
-    parser.add_argument("--entropy_agg", action="store_true", default=False)
     parser.add_argument(
         "--em_iter", type=int, default=1, help="Iterations of EM algorithmn"
     )

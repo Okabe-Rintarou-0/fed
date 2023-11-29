@@ -3,7 +3,16 @@ from typing import List
 import torch
 from models.base import FedModel
 from torch import nn
-from torchvision.models import resnet18, resnet50, ResNet18_Weights, ResNet50_Weights
+from torchvision.models import (
+    resnet18,
+    resnet34,
+    resnet50,
+    resnet101,
+    ResNet18_Weights,
+    ResNet34_Weights,
+    ResNet50_Weights,
+    ResNet101_Weights,
+)
 import torch.nn.functional as F
 import torch.distributions as distributions
 
@@ -27,8 +36,12 @@ class ResNetBase(FedModel):
 
         if backbone == "resnet18":
             self.backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
+        elif backbone == "resnet34":
+            self.backbone = resnet34(weights=ResNet34_Weights.DEFAULT)
         elif backbone == "resnet50":
             self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
+        elif backbone == "resnet101":
+            self.backbone = resnet101(weights=ResNet101_Weights.DEFAULT)
         else:
             raise NotImplementedError()
 

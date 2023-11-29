@@ -35,7 +35,9 @@ from sklearn.metrics.pairwise import linear_kernel
 if __name__ == "__main__":
     m1 = CifarMLP()
     m2 = CifarCNN()
-    m3 = CifarResNet(backbone='resnet50')
+    m3 = CifarResNet(backbone='resnet18')
+    m4 = CifarResNet(backbone='resnet34')
+    m5 = CifarResNet(backbone='resnet50')
 
     input = torch.randn((32, 3, 32, 32))
 
@@ -44,4 +46,6 @@ if __name__ == "__main__":
     print(weight_flatten(m2.state_dict()).shape)
 
     print(weight_flatten(m3.state_dict()).shape)
+    print(weight_flatten(m4.state_dict()).shape)
+    print(weight_flatten(m5.state_dict()).shape)
     # print(m2(input))

@@ -4,21 +4,13 @@ import os
 import numpy as np
 import torch
 from tqdm import tqdm
-from algorithmn.fedclassavg import FedClassAvgClient, FedClassAvgServer
-from algorithmn.fedgen import FedGenClient, FedGenServer
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
-from algorithmn.fedgmm import FedGMMClient, FedGMMServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
-from algorithmn.fedpac import FedPACClient, FedPACServer
-from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
-from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.fedts import FedTSClient, FedTSServer
-from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
-from algorithmn.transform import DoubleTransform
 
 from data_loader import (
     get_dataloaders,
@@ -37,32 +29,18 @@ FL_CLIENT = {
     "FedStandAlone": FedStandAloneClient,
     "FedAvg": FedAvgClient,
     "FedProx": FedProxClient,
-    "Lg_FedAvg": LgFedAvgClient,
-    "FedPer": FedPerClient,
     "FedL2Reg": FedL2RegClient,
     "pFedGraph": PFedGraphClient,
-    "FedSR": FedSRClient,
-    "FedPAC": FedPACClient,
-    "FedGMM": FedGMMClient,
-    "FedGen": FedGenClient,
     "FedTS": FedTSClient,
-    "FedClassAvg": FedClassAvgClient,
 }
 
 FL_SERVER = {
     "FedStandAlone": FedStandAloneServer,
     "FedAvg": FedAvgServer,
     "FedProx": FedProxServer,
-    "Lg_FedAvg": LgFedAvgServer,
-    "FedPer": FedPerServer,
     "FedL2Reg": FedL2RegServer,
     "pFedGraph": PFedGraphServer,
-    "FedSR": FedSRServer,
-    "FedPAC": FedPACServer,
-    "FedGMM": FedGMMServer,
-    "FedGen": FedGenServer,
     "FedTS": FedTSServer,
-    "FedClassAvg": FedClassAvgServer,
 }
 
 LOADER_PATH_MAP = {
@@ -116,14 +94,8 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
-    if args.agg_head:
-        sub_dir_name = f"{sub_dir_name}_agg_head"
-    if args.entropy_agg:
-        sub_dir_name = f"{sub_dir_name}_entropy_agg"
 
-    sub_dir_name = (
-        f"{sub_dir_name}_{args.dataset}_te_{args.teacher_percent}_beta_{args.beta}"
-    )
+    sub_dir_name = f"{sub_dir_name}_{args.dataset}_te_{args.teacher_percent}_beta_{args.beta}_backbone_{args.backbone}"
 
     tensorboard_path = os.path.join(args.base_dir, "tensorboard", sub_dir_name)
     i = 1

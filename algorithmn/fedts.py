@@ -1,9 +1,6 @@
 from argparse import Namespace
 import copy
-import math
 from typing import List
-from sklearn.cluster import KMeans
-from sklearn.decomposition import KernelPCA
 from tensorboardX import SummaryWriter
 import torch
 from torch.utils.data import DataLoader
@@ -12,7 +9,6 @@ import numpy as np
 import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
-from data_loader import AUGMENT_TRANSFORM
 from models.base import FedModel
 from models.generator import Generator
 from tools import (
@@ -100,53 +96,39 @@ class FedTSServer(FedServerBase):
                 y = np.random.choice(self.qualified_labels, local_bs)
                 y_input = F.one_hot(torch.LongTensor(y), self.unique_labels).float()
                 gen_output, _ = self.generator(y_input)
-                if self.args.entropy_agg:
-                    teacher_losses = []
-                    teacher_entropies = []
-                    for client_idx, client in enumerate(self.selected_clients):
-                        client.local_model.eval()
-                        weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
-                        client_output = client.local_model.classifier(gen_output)
+                teacher_losses = []
+                teacher_entropies = []
+                for client_idx, client in enumerate(self.selected_clients):
+                    client.local_model.eval()
+                    weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
+                    client_output = client.local_model.classifier(gen_output)
 
-                        logits = F.softmax(client_output, dim=1)
-                        entropy = torch.sum(-logits * torch.log(logits + 1e-24), dim=1)
+                    logits = F.softmax(client_output, dim=1)
+                    entropy = torch.sum(-logits * torch.log(logits + 1e-24), dim=1)
 
-                        teacher_entropies.append(entropy)
-                        teacher_loss_ = (
-                            self.generator.crossentropy_loss(client_output, y_input)
-                            * torch.tensor(weight, dtype=torch.float32).squeeze()
-                        )
-
-                        teacher_losses.append(teacher_loss_)
-
-                    teacher_losses = torch.vstack(teacher_losses)
-                    teacher_entropies = torch.vstack(teacher_entropies)
-                    entropy_weights = F.softmax(1 / teacher_entropies, dim=0)
-                    ratio = (
-                        1.0
-                        if client.idx in self.teacher_clients
-                        else (round + 1) / self.args.epochs
+                    teacher_entropies.append(entropy)
+                    teacher_loss = (
+                        self.generator.crossentropy_loss(client_output, y_input)
+                        * torch.tensor(weight, dtype=torch.float32).squeeze()
                     )
-                    losses = torch.mean(
-                        teacher_losses * entropy_weights * self.args.eta * ratio, dim=1
-                    )
-                    teacher_loss = torch.sum(losses)
-                else:
-                    teacher_loss = 0
-                    for client_idx, client in enumerate(self.selected_clients):
-                        client.local_model.eval()
-                        weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
-                        client_output = client.local_model.classifier(gen_output)
-                        teacher_loss_ = torch.mean(
-                            self.generator.crossentropy_loss(client_output, y_input)
-                            * torch.tensor(weight, dtype=torch.float32).squeeze()
-                        )
-                        teacher_loss += teacher_loss_
+
+                    teacher_losses.append(teacher_loss)
+
+                teacher_losses = torch.vstack(teacher_losses)
+                teacher_entropies = torch.vstack(teacher_entropies)
+                entropy_weights = F.softmax(1 / teacher_entropies, dim=0)
+                ratio = (
+                    1.0
+                    if client.idx in self.teacher_clients
+                    else (round + 1) / self.args.epochs
+                )
+                losses = torch.mean(
+                    teacher_losses * entropy_weights * self.args.eta * ratio, dim=1
+                )
+                teacher_loss = torch.sum(losses)
 
                 lr2_loss = gen_output.norm(dim=1).mean()
-                loss = (
-                    self.ensemble_alpha * teacher_loss + self.args.l2r_coeff * lr2_loss
-                )
+                loss = teacher_loss + self.args.l2r_coeff * lr2_loss
                 loss.backward()
                 self.generative_optimizer.step()
         print("done.")
@@ -205,51 +187,41 @@ class FedTSServer(FedServerBase):
 
             agg_weight = local_client.agg_weight()
             weights = copy.deepcopy(w)
-            # protos = result.protos
             label_cnts = local_client.label_cnts
-
             local_agg_weights.append(agg_weight)
             local_weights.append(weights)
-            # local_protos.append(protos)
             label_sizes.append(label_cnts)
 
             if idx in self.teacher_clients:
                 teacher_weights.append(w)
                 teacher_agg_weights.append(agg_weight)
                 teacher_accs.append(local_acc2)
-                # teacher_protos.append(protos)
                 teacher_label_sizes.append(label_cnts)
             else:
                 student_weights.append(w)
                 student_agg_weights.append(agg_weight)
                 student_accs.append(local_acc2)
-                # student_protos.append(protos)
                 student_label_sizes.append(label_cnts)
 
         student_weights = aggregate_weights(student_weights, student_agg_weights)
         teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        dv = cal_cosine_difference_vector(
+            idx_clients,
+            self.initial_global_weights,
+            local_weights_map,
+        )
+        alpha = self.alpha
+        sum_local_agg_weights = sum(local_agg_weights)
+        for i in range(len(local_agg_weights)):
+            local_agg_weights[i] /= sum_local_agg_weights
+        agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
+        tmp = torch.tensor(local_agg_weights)
+        print(agg_weight, (tmp / torch.sum(tmp)).tolist())
 
-        if self.args.agg_head:
-            dv = cal_cosine_difference_vector(
-                idx_clients,
-                self.initial_global_weights,
-                local_weights_map,
-            )
-            alpha = self.alpha
-            sum_local_agg_weights = sum(local_agg_weights)
-            for i in range(len(local_agg_weights)):
-                local_agg_weights[i] /= sum_local_agg_weights
-            agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
-            tmp = torch.tensor(local_agg_weights)
-            print(agg_weight, (tmp / torch.sum(tmp)).tolist())
+        classifier_weights = aggregate_weights(
+            local_weights, agg_weight, self.client_aggregatable_weights
+        )
 
-            classifier_weights = aggregate_weights(
-                local_weights, agg_weight, self.client_aggregatable_weights
-            )
-        else:
-            classifier_weights = aggregate_weights(
-                local_weights, local_agg_weights, self.client_aggregatable_weights
-            )
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
                 local_client.update_base_model(teacher_weights)
@@ -324,6 +296,7 @@ class FedTSClient(FedClientBase):
             for label in range(self.available_labels)
             if self.label_cnts[label] < avg_label_cnts
         ]
+        self.gen_batch_size = args.gen_batch_size
         gen_ratio = args.gen_batch_size / args.local_bs
         self.lam1 = args.lam1
         self.lam2 = args.lam2

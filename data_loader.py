@@ -25,16 +25,6 @@ from models.resnet import (
 
 DATASET_PATH = "./data"
 
-AUGMENT_TRANSFORM = transforms.Compose(
-    [
-        transforms.ToPILImage(),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomAffine(degrees=20, translate=(0.2, 0.2), scale=(0.7, 1.3)),
-        transforms.ToTensor(),
-    ]
-)
-
 
 class DatasetSplit(Dataset):
     def __init__(self, dataset, index=None, get_index=False):
@@ -46,36 +36,12 @@ class DatasetSplit(Dataset):
             if index is not None
             else [i for i in range(len(dataset))]
         )
-        self.augment_set = []
-
-    def do_augment(self, labels: List[int], aug_num: List[int], aug_transform):
-        aug_cnt = {label: 0 for label in labels}
-        label_aug_num_map = {label: aug_num[idx] for (idx, label) in enumerate(labels)}
-        rest_label_set = set(
-            [label for (idx, label) in enumerate(labels) if aug_num[idx] > 0]
-        )
-
-        for idx in self.idxs:
-            x, label = self.dataset[idx]
-            if label not in rest_label_set:
-                continue
-
-            x = aug_transform(x)
-            self.augment_set.append((x, label))
-            aug_cnt[label] += 1
-            if aug_cnt[label] == label_aug_num_map[label]:
-                rest_label_set.remove(label)
-                if len(rest_label_set) == 0:
-                    return
 
     def __len__(self):
-        return len(self.idxs) + len(self.augment_set)
+        return len(self.idxs)
 
     def __getitem__(self, index):
-        if index < len(self.idxs):
-            x, label = self.dataset[self.idxs[index]]
-        else:
-            x, label = self.augment_set[index - len(self.idxs)]
+        x, label = self.dataset[self.idxs[index]]
 
         if self.get_index:
             return x, label, index
@@ -997,6 +963,7 @@ def get_models(args: Namespace) -> Tuple[FedModel, FedModel]:
             probabilistic=prob,
             model_het=model_het,
             z_dim=z_dim,
+            backbone=args.backbone,
         )
     else:
         raise NotImplementedError()

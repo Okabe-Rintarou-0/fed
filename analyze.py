@@ -1,13 +1,11 @@
 from copy import deepcopy
 import json
 import os
-import random
 import numpy as np
 from sklearn.decomposition import KernelPCA
 import torch
 from tqdm import tqdm
 from algorithmn.fedgen import FedGenClient, FedGenServer
-from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedgmm import FedGMMClient, FedGMMServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
@@ -16,7 +14,7 @@ from algorithmn.fedper import FedPerClient, FedPerServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedsr import FedSRClient, FedSRServer
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
-from algorithmn.fedts import FedTSGenClient, FedTSGenServer
+from algorithmn.fedts import FedTSClient, FedTSServer
 from algorithmn.lg_fedavg import LgFedAvgClient, LgFedAvgServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 
@@ -28,13 +26,6 @@ from data_loader import (
     get_models,
 )
 from options import parse_args
-from tensorboardX import SummaryWriter
-
-from tools import (
-    draw_label_dist,
-    write_client_datasets,
-    write_client_label_distribution,
-)
 
 FL_CLIENT = {
     "FedStandAlone": FedStandAloneClient,
@@ -48,7 +39,7 @@ FL_CLIENT = {
     "FedPAC": FedPACClient,
     "FedGMM": FedGMMClient,
     "FedGen": FedGenClient,
-    "FedTSGen": FedTSGenClient,
+    "FedTS": FedTSClient,
 }
 
 FL_SERVER = {
@@ -63,7 +54,7 @@ FL_SERVER = {
     "FedPAC": FedPACServer,
     "FedGMM": FedGMMServer,
     "FedGen": FedGenServer,
-    "FedTSGen": FedTSGenServer,
+    "FedTS": FedTSServer,
 }
 
 
