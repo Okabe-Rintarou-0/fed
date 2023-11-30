@@ -8,10 +8,12 @@ from torchvision.models import (
     resnet34,
     resnet50,
     resnet101,
+    resnet152,
     ResNet18_Weights,
     ResNet34_Weights,
     ResNet50_Weights,
     ResNet101_Weights,
+    ResNet152_Weights,
 )
 import torch.nn.functional as F
 import torch.distributions as distributions
@@ -42,6 +44,8 @@ class ResNetBase(FedModel):
             self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
         elif backbone == "resnet101":
             self.backbone = resnet101(weights=ResNet101_Weights.DEFAULT)
+        elif backbone == "resnet152":
+            self.backbone = resnet152(weights=ResNet152_Weights.DEFAULT)
         else:
             raise NotImplementedError()
 

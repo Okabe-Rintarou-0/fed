@@ -1,7 +1,7 @@
 # How to train
 
 ```bash
-python hm_main.py --train_rule FedTS --local_bs 64 --dataset cifar --beta 0.5
+python hm_main.py --train_rule FedTS --local_bs 64 --dataset cifar --beta 0.5 --teacher_percent 0.4 --backbone resnet18
 ```
 
 + `--dataset` can be `cifar`, `cinic10` and `fmnist`. 

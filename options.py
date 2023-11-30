@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
         help="the training rule for personalized FL",
     )
     parser.add_argument("--iid", action="store_true", help="use iid dataset or not")
-    parser.add_argument("--dataset", type=str, default="mnist", help="name of dataset")
+    parser.add_argument("--dataset", type=str, default="cifar", help="name of dataset")
     parser.add_argument("--num_classes", type=int, default=10, help="number of classes")
     parser.add_argument(
         "--lam", type=float, default=1.0, help="coefficient for reg term"
@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--backbone",
         type=str,
-        default='resnet18',
+        default="resnet18",
     )
     parser.add_argument(
         "--record_client_data", action="store_true", help="Record label distribution"
