@@ -56,10 +56,10 @@ def gen_data_loaders(
     get_index: bool,
 ):
     # if shuffle:
-    #     with open("./train_cfg/beta_2.0/cinic10_train_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/beta_2.0/fmnist_train_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     # else:
-    #     with open("./train_cfg/beta_2.0/cinic10_test_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/beta_2.0/fmnist_test_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:

@@ -99,8 +99,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model_het",
-        action="store_true",
-        default=False,
+        type=bool,
+        default=True,
         help="Use heterogeneous model",
     )
     parser.add_argument(

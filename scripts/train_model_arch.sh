@@ -6,6 +6,7 @@ for beta in "${betas[@]}"; do
         python hm_main.py --train_rule FedTS --local_bs 64 \
         --backbone "$backbone" \
         --teacher_percent 0.4 \
+        --device cuda \
         --dataset cifar \
         --beta "$beta"
     done
