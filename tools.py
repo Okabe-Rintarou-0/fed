@@ -321,9 +321,11 @@ def draw_label_dist(dists: List[Dict[int, int]], num_classes: int):
             plt.scatter([idx], [label], s=label_radius, color="red")
     plt.xticks(range(len(dists)))
     plt.yticks(range(num_classes))
-    plt.xlabel("Client")
-    plt.ylabel("Label")
-    plt.show()
+    plt.tick_params(axis="y", labelsize=16)
+    plt.tick_params(axis="x", labelsize=14)
+    plt.xlabel("Client", fontsize=16)
+    plt.ylabel("Label", fontsize=16)
+    plt.savefig("dist.png", dpi=600, bbox_inches="tight")
 
 
 def cal_cosine_difference_vector(
