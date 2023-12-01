@@ -12,3 +12,9 @@ python hm_main.py --train_rule FedTS --local_bs 64 --dataset cifar --beta 0.5 --
   + `FedL2Reg`
   + `FedProx`
   + `pFedGraph` 
+
+
+## Scripts
+
++ Train on different teacher architectures: `. scripts/train_model_arch.sh`.
++ Train on different teacher percent: `. scripts/train_teacher_percent.sh`.

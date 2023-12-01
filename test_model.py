@@ -36,8 +36,8 @@ if __name__ == "__main__":
     m1 = CifarMLP()
     m2 = CifarCNN()
     m3 = CifarResNet(backbone='resnet18')
-    m4 = CifarResNet(backbone='resnet34')
-    m5 = CifarResNet(backbone='resnet50')
+    m4 = CifarResNet(backbone='resnet101')
+    m5 = CifarResNet(backbone='resnet152')
 
     input = torch.randn((32, 3, 32, 32))
 

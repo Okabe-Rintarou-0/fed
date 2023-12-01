@@ -6,8 +6,7 @@ sns.set_theme()
 fig, ax = plt.subplots()
 # Turns off grid on the left Axis.
 ax.grid(False)
-# x_labels = ["ResNet18", "ResNet34", "ResNet50", "ResNet101"]
-x_labels = ["ResNet18", "ResNet34", "ResNet50"]
+x_labels = ["ResNet18", "ResNet34", "ResNet50", "ResNet101"]
 x_positions = range(len(x_labels))
 plt.xticks(x_positions, x_labels)
 twin = ax.twinx()
@@ -15,7 +14,7 @@ twin.grid(False)
 
 (p1,) = ax.plot(
     x_positions,
-    [54.79, 55.41, 56.54],
+    [54.79, 55.41, 56.54, 56.53],
     "C0",
     marker="s",
     # linestyle="--",
@@ -24,7 +23,7 @@ twin.grid(False)
 )
 (p2,) = ax.plot(
     x_positions,
-    [42.43, 42.12, 40.90],
+    [42.43, 42.12, 40.90, 41.69],
     "C1",
     marker="D",
     # linestyle="--",
@@ -33,7 +32,7 @@ twin.grid(False)
 )
 (p3,) = twin.plot(
     x_positions,
-    [11253086, 21368686, 23824767],
+    [11253086, 21368686, 23824767, 42869170, 58558949],
     "C2",
     label="Number of Parameters",
     marker="o",
