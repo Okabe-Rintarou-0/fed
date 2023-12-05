@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 path = "./data/csv"
 
 labels_map = {
@@ -20,7 +21,7 @@ for label in labels_map:
     index = list(df["Value"].index)
     values = df["Value"].values
     values /= 100
-    
+
     plt.plot(index, values, label=label, alpha=0.7)
 
 plt.ylim((0.65, 0.85))
@@ -28,4 +29,5 @@ plt.yticks(np.arange(0.65, 0.85, 0.05))
 plt.xlabel("Number of local epochs")
 plt.ylabel("Test accuracy")
 plt.legend()
-plt.savefig("./plot1.png")
+plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+plt.savefig("./plot1.png", dpi=600, bbox_inches="tight")

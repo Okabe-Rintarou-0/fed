@@ -45,10 +45,10 @@ FL_SERVER = {
 }
 
 LOADER_PATH_MAP = {
-    # "fmnist": {
-    #     "train": "fmnist_train_client_20_dirichlet.json",
-    #     "test": "fmnist_test_client_20_dirichlet.json",
-    # },
+    "fmnist": {
+        "train": "fmnist_train_client_20_dirichlet.json",
+        "test": "fmnist_test_client_20_dirichlet.json",
+    },
     "cifar": {
         "train": "cifar_train_client_20_dirichlet.json",
         "test": "cifar_test_client_20_dirichlet.json",

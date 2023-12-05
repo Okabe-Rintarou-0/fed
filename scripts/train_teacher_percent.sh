@@ -7,7 +7,6 @@ for beta in "${betas[@]}"; do
         fi
         teacher_percent=$(printf "%.2f" $(echo "scale=2; $num/20" | bc))
         python hm_main.py --train_rule FedTS --local_bs 64 \
-        --backbone "$backbone" \
         --device cuda \
         --teacher_percent "$teacher_percent" \
         --dataset cifar \

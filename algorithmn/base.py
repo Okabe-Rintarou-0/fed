@@ -128,10 +128,7 @@ class FedServerBase:
         teacher_clients,
     ):
         num_clients = len(client_idxs)
-        ta_losses = []
         teacher_losses = []
-        ta_acc1s = []
-        ta_acc2s = []
         teacher_acc1s = []
         teacher_acc2s = []
 
@@ -150,10 +147,6 @@ class FedServerBase:
                 student_acc1s.append(acc1)
                 student_acc2s.append(acc2)
 
-        if len(ta_losses) > 0:
-            result.loss_map["ta_avg_loss"] = sum(ta_losses) / len(ta_losses)
-            result.acc_map["ta_acc1"] = sum(ta_acc1s) / len(ta_acc1s)
-            result.acc_map["ta_acc2"] = sum(ta_acc2s) / len(ta_acc2s)
         if len(teacher_losses) > 0:
             result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / len(
                 teacher_losses

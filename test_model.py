@@ -33,9 +33,9 @@ from sklearn.metrics.pairwise import linear_kernel
 
 
 if __name__ == "__main__":
-    m1 = CifarMLP()
-    m2 = CifarCNN()
-    m3 = CifarResNet(backbone='resnet18')
+    m1 = CifarResNet(backbone='resnet18')
+    m2 = CifarResNet(backbone='resnet34')
+    m3 = CifarResNet(backbone='resnet50')
     m4 = CifarResNet(backbone='resnet101')
     m5 = CifarResNet(backbone='resnet152')
 
