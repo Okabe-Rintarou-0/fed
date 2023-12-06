@@ -1,7 +1,7 @@
 betas=("0.5" "2.0")
 
 for beta in "${betas[@]}"; do
-    for ((num=0; num<=20; num++)); do
+    for ((num=0; num<20; num++)); do
         if [ "$num" -eq 4 ] || [ "$num" -eq 8 ]; then
             continue  # Skip the rest of the loop for num=4 or num=8
         fi
