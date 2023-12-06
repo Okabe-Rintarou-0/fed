@@ -33,19 +33,53 @@ from sklearn.metrics.pairwise import linear_kernel
 
 
 if __name__ == "__main__":
-    m1 = CifarResNet(backbone='resnet18')
-    m2 = CifarResNet(backbone='resnet34')
-    m3 = CifarResNet(backbone='resnet50')
-    m4 = CifarResNet(backbone='resnet101')
-    m5 = CifarResNet(backbone='resnet152')
+    a_stu = [
+        44.55,
+        44.86,
+        44.52,
+        43.54,
+        41.53,
+        39.83,
+        40.02,
+        40.96,
+        42.43,
+        42.44,
+        41.18,
+        39.18,
+        36.65,
+        32.62,
+        32.83,
+        35.87,
+        36.75,
+        32.40,
+        22.59,
+        12.95,
+    ]
+    a = [
+        44.55,
+        46.21,
+        46.63,
+        48.03,
+        47.94,
+        48.29,
+        49.93,
+        51.41,
+        54.79,
+        55.75,
+        57.96,
+        58.56,
+        59.99,
+        61.33,
+        63.86,
+        67.43,
+        69.12,
+        71.00,
+        71.42,
+        73.89,
+    ]
 
-    input = torch.randn((32, 3, 32, 32))
-
-    print(weight_flatten(m1.state_dict()).shape)
-
-    print(weight_flatten(m2.state_dict()).shape)
-
-    print(weight_flatten(m3.state_dict()).shape)
-    print(weight_flatten(m4.state_dict()).shape)
-    print(weight_flatten(m5.state_dict()).shape)
-    # print(m2(input))
+    x = np.array(range(0, 20))
+    A = np.array(a)
+    A_stu = np.array(a_stu)
+    n = np.array([20] * 20)
+    print((n * A - (n - x) * A_stu) / x)

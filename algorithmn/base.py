@@ -153,9 +153,10 @@ class FedServerBase:
             )
             result.acc_map["teacher_acc1"] = sum(teacher_acc1s) / len(teacher_acc1s)
             result.acc_map["teacher_acc2"] = sum(teacher_acc2s) / len(teacher_acc2s)
-
-        result.acc_map["student_acc1"] = sum(student_acc1s) / len(student_acc1s)
-        result.acc_map["student_acc2"] = sum(student_acc2s) / len(student_acc2s)
+        
+        if len(student_acc1s) > 0:
+            result.acc_map["student_acc1"] = sum(student_acc1s) / len(student_acc1s)
+            result.acc_map["student_acc2"] = sum(student_acc2s) / len(student_acc2s)
 
     @abstractmethod
     def train_one_round(self, round: int):
