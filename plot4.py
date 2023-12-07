@@ -27,25 +27,25 @@ a_teacher = [
     77.10,
 ]
 a_teacher_only = [
-    42.75,
-    48.75,
-    46.63,
-    48.03,
-    47.94,
-    48.29,
-    49.93,
-    51.41,
-    54.79,
-    55.75,
-    57.96,
-    58.56,
-    59.99,
-    61.33,
-    63.86,
-    67.43,
-    69.12,
-    71.00,
-    71.42,
+    71.18,
+    67.54,
+    74.57,
+    74.32,
+    73.83,
+    74.08,
+    72.76,
+    73.82,
+    72.94,
+    75.03,
+    75.00,
+    76.09,
+    77.46,
+    77.51,
+    78.02,
+    77.45,
+    78.44,
+    76.85,
+    77.10,
 ]
 
 # a_teacher_beta_2 = [
@@ -102,7 +102,7 @@ plt.plot(
 )
 
 plt.ylabel("Test Accuracy", fontsize=16)
-plt.ylabel("Number of Teachers", fontsize=16)
+plt.xlabel("Number of Teachers", fontsize=16)
 plt.xticks(x)
 plt.legend(fontsize=16)
 plt.tick_params(axis="x", labelsize=16)

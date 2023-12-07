@@ -168,7 +168,7 @@ if __name__ == "__main__":
             local_clients.append(client)
             # dists.append(client.label_distribution())
             bar.update(1)
-
+    local_clients = local_clients[args.stu_idx:]
     # draw_label_dist(dists, args.num_classes)
 
     server = Server(
