@@ -49,10 +49,10 @@ LOADER_PATH_MAP = {
         "train": "fmnist_train_client_20_dirichlet.json",
         "test": "fmnist_test_client_20_dirichlet.json",
     },
-    # "cifar": {
-    #     "train": "cifar_train_client_20_dirichlet.json",
-    #     "test": "cifar_test_client_20_dirichlet.json",
-    # },
+    "cifar": {
+        "train": "cifar_train_client_20_dirichlet.json",
+        "test": "cifar_test_client_20_dirichlet.json",
+    },
     "cinic10": {
         "train": "cinic10_train_client_20_dirichlet.json",
         "test": "cinic10_test_client_20_dirichlet.json",
