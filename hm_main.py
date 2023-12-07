@@ -132,7 +132,7 @@ if __name__ == "__main__":
     local_accs1, local_accs2 = [], []
     local_clients = []
 
-    client_idxs = list(range(args.num_clients))
+    client_idxs = list(range(args.stu_idx, args.num_clients))
 
     client_idx_set = set(client_idxs)
     teacher_num = int(args.teacher_percent * args.num_clients)
@@ -168,7 +168,6 @@ if __name__ == "__main__":
             local_clients.append(client)
             # dists.append(client.label_distribution())
             bar.update(1)
-    local_clients = local_clients[args.stu_idx:]
     # draw_label_dist(dists, args.num_classes)
 
     server = Server(
