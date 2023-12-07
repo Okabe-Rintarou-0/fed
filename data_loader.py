@@ -55,12 +55,12 @@ def gen_data_loaders(
     shuffle: bool,
     get_index: bool,
 ):
-    # if shuffle:
-    #     with open("./train_cfg/beta_2.0/fmnist_train_client_20_dirichlet.json", "w") as f:
-    #         f.write(json.dumps(client_idxs))
-    # else:
-    #     with open("./train_cfg/beta_2.0/fmnist_test_client_20_dirichlet.json", "w") as f:
-    #         f.write(json.dumps(client_idxs))
+    if shuffle:
+        with open("./train_cfg/beta_0.1/cifar_train_client_20_dirichlet.json", "w") as f:
+            f.write(json.dumps(client_idxs))
+    else:
+        with open("./train_cfg/beta_0.1/cifar_test_client_20_dirichlet.json", "w") as f:
+            f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
         splitted_dataset = DatasetSplit(dataset, list(client_idx), get_index)

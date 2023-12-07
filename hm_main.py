@@ -49,10 +49,10 @@ LOADER_PATH_MAP = {
         "train": "fmnist_train_client_20_dirichlet.json",
         "test": "fmnist_test_client_20_dirichlet.json",
     },
-    "cifar": {
-        "train": "cifar_train_client_20_dirichlet.json",
-        "test": "cifar_test_client_20_dirichlet.json",
-    },
+    # "cifar": {
+    #     "train": "cifar_train_client_20_dirichlet.json",
+    #     "test": "cifar_test_client_20_dirichlet.json",
+    # },
     "cinic10": {
         "train": "cinic10_train_client_20_dirichlet.json",
         "test": "cinic10_test_client_20_dirichlet.json",
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     args.num_clients = args.num_clients - args.stu_idx
 
-    # dists = []
+    dists = []
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
             if idx in teacher_clients:
@@ -168,9 +168,9 @@ if __name__ == "__main__":
                     idx, writer, train_loader, args.num_classes, args.get_index
                 )
             local_clients.append(client)
-            # dists.append(client.label_distribution())
+            dists.append(client.label_distribution())
             bar.update(1)
-    # draw_label_dist(dists, args.num_classes)
+    draw_label_dist(dists, args.num_classes)
 
     server = Server(
         args=args, global_model=student_model, clients=local_clients, writer=writer
