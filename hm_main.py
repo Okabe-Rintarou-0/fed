@@ -140,6 +140,8 @@ if __name__ == "__main__":
     args.teacher_clients = teacher_clients
     print("teacher clients:", teacher_clients)
 
+    args.num_clients = args.num_clients - args.stu_idx
+
     # dists = []
     with tqdm(total=args.num_clients, desc="loading client") as bar:
         for idx in client_idxs:
