@@ -56,10 +56,10 @@ def gen_data_loaders(
     get_index: bool,
 ):
     # if shuffle:
-    #     with open("./train_cfg/beta_0.1/cifar_train_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/beta_0.5/mnist_train_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     # else:
-    #     with open("./train_cfg/beta_0.1/cifar_test_client_20_dirichlet.json", "w") as f:
+    #     with open("./train_cfg/beta_0.5/mnist_test_client_20_dirichlet.json", "w") as f:
     #         f.write(json.dumps(client_idxs))
     dataloaders = []
     for client_idx in client_idxs:
@@ -118,7 +118,8 @@ def iid_partition(
     rand_set_all = []
     if len(rand_set_all) == 0:
         for i in range(num_clients):
-            x = np.random.choice(np.arange(num_classes), shard_per_user, replace=False)
+            x = np.random.choice(np.arange(num_classes),
+                                 shard_per_user, replace=False)
             rand_set_all.append(x)
 
     # divide and assign
@@ -126,12 +127,14 @@ def iid_partition(
         rand_set_label = rand_set_all[i]
         rand_set = []
         for label in rand_set_label:
-            x = np.random.choice(idxs_dict[label], imgs_per_shard, replace=False)
+            x = np.random.choice(
+                idxs_dict[label], imgs_per_shard, replace=False)
             rand_set.append(x)
         client_idxs[i] = np.concatenate(rand_set)
 
     for value in client_idxs:
-        assert (len(np.unique(torch.tensor(dataset.targets)[value]))) == shard_per_user
+        assert (
+            len(np.unique(torch.tensor(dataset.targets)[value]))) == shard_per_user
 
     return client_idxs
 
@@ -207,7 +210,8 @@ def cifar10_noniid(
     num_per_client = local_size if train else 300
     num_classes = len(np.unique(dataset.targets))
 
-    noniid_labels_list = [[0, 1, 2], [2, 3, 4], [4, 5, 6], [6, 7, 8], [8, 9, 0]]
+    noniid_labels_list = [[0, 1, 2], [2, 3, 4],
+                          [4, 5, 6], [6, 7, 8], [8, 9, 0]]
 
     # -------------------------------------------------------
     # divide the first dataset
@@ -246,7 +250,7 @@ def cifar10_noniid(
                 start = y * num_per_label_total
                 label_used[y] = 0
             client_idxs[i] = np.concatenate(
-                (client_idxs[i], idxs[start : start + iid_num]), axis=0
+                (client_idxs[i], idxs[start: start + iid_num]), axis=0
             )
             label_used[y] = label_used[y] + iid_num
 
@@ -255,7 +259,8 @@ def cifar10_noniid(
         rand_label = noniid_labels_list[i % 5]
         noniid_labels = len(rand_label)
         noniid_per_num = int(num_imgs_noniid / noniid_labels)
-        noniid_per_num_last = num_imgs_noniid - noniid_per_num * (noniid_labels - 1)
+        noniid_per_num_last = num_imgs_noniid - \
+            noniid_per_num * (noniid_labels - 1)
         label_cnt = 0
         for y in rand_label:
             label_cnt = label_cnt + 1
@@ -267,7 +272,7 @@ def cifar10_noniid(
                 start = y * num_per_label_total
                 label_used[y] = 0
             client_idxs[i] = np.concatenate(
-                (client_idxs[i], idxs[start : start + noniid_num]), axis=0
+                (client_idxs[i], idxs[start: start + noniid_num]), axis=0
             )
             label_used[y] = label_used[y] + noniid_num
         client_idxs[i] = client_idxs[i].astype(int)
@@ -297,7 +302,8 @@ def dirichlet_partition(
             )
             # normalize
             proportions = proportions / proportions.sum()
-            proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
+            proportions = (np.cumsum(proportions) *
+                           len(idx_k)).astype(int)[:-1]
             client_idxs = [
                 idx_j + idx.tolist()
                 for idx_j, idx in zip(client_idxs, np.split(idx_k, proportions))
@@ -487,7 +493,8 @@ def cinic10_dataset() -> Tuple[Dataset, Dataset]:
     trainset = CINIC10(
         root, partition="train", download=True, transform=transform_train
     )
-    testset = CINIC10(root, partition="test", download=True, transform=transform_test)
+    testset = CINIC10(root, partition="test", download=True,
+                      transform=transform_test)
     return trainset, testset
 
 
@@ -497,14 +504,16 @@ def cifar10_dataset(double_trans=False) -> Tuple[Dataset, Dataset]:
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010)),
         ]
     )
 
     transform_test = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010)),
         ]
     )
 
@@ -526,14 +535,16 @@ def cifar100_dataset() -> Tuple[Dataset, Dataset]:
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010)),
         ]
     )
 
     transform_test = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010)),
         ]
     )
 
@@ -673,8 +684,9 @@ def get_dataloaders_from_json(
 
     return train_loaders, test_loaders
 
-
 # get_dataloaders returns train and test dataloader of given dataset
+
+
 def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]]:
     dataset = args.dataset
     iid = args.iid
@@ -689,9 +701,9 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
             train_loaders = mnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = mnist_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = mnist_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = mnist_noniid_dirichlet(
                 trainset,
@@ -701,23 +713,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = mnist_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = mnist_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["cifar10", "cifar"]:
         trainset, testset = cifar10_dataset()
         if iid:
             train_loaders = cifar10_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = cifar10_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = cifar10_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = cifar10_noniid_dirichlet(
                 trainset,
@@ -727,23 +739,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = cifar10_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = cifar10_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["cinic", "cinic10"]:
         trainset, testset = cinic10_dataset()
         if iid:
             train_loaders = cinic10_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = cinic10_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = cinic10_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = cinic10_noniid_dirichlet(
                 trainset,
@@ -753,23 +765,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = cinic10_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = cinic10_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["fmnist"]:
         trainset, testset = fmnist_dataset()
         if iid:
             train_loaders = fmnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = fmnist_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = fmnist_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = fmnist_noniid_dirichlet(
                 trainset,
@@ -779,23 +791,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = fmnist_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = fmnist_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["emnist"]:
         trainset, testset = emnist_dataset()
         if iid:
             train_loaders = emnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = emnist_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = emnist_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = emnist_noniid_dirichlet(
                 trainset,
@@ -805,23 +817,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = emnist_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = emnist_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["cifar100"]:
         trainset, testset = cifar100_dataset()
         if iid:
             train_loaders = cifar100_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            test_loaders = cifar100_iid(
-                testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            )
+            # test_loaders = cifar100_iid(
+            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
+            # )
         else:
             train_loaders = cifar100_noniid_dirichlet(
                 trainset,
@@ -831,20 +843,23 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            test_loaders = cifar100_noniid_dirichlet(
-                testset,
-                num_clients,
-                args.beta,
-                local_bs,
-                shuffle=False,
-                get_index=get_index,
-            )
+            # test_loaders = cifar100_noniid_dirichlet(
+            #     testset,
+            #     num_clients,
+            #     args.beta,
+            #     local_bs,
+            #     shuffle=False,
+            #     get_index=get_index,
+            # )
     elif dataset in ["pacs"]:
         return pacs(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
     elif dataset in ["rmnist"]:
         return rmnist(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
     else:
         raise NotImplementedError()
+
+    test_loaders = [DataLoader(
+        dataset=testset, shuffle=True, drop_last=True, batch_size=local_bs)] * num_clients
 
     return train_loaders, test_loaders
 

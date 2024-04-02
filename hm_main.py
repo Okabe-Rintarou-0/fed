@@ -49,6 +49,10 @@ LOADER_PATH_MAP = {
         "train": "fmnist_train_client_20_dirichlet.json",
         "test": "fmnist_test_client_20_dirichlet.json",
     },
+    "mnist": {
+        "train": "mnist_train_client_20_dirichlet.json",
+        "test": "mnist_test_client_20_dirichlet.json",
+    },
     "cifar": {
         "train": "cifar_train_client_20_dirichlet.json",
         "test": "cifar_test_client_20_dirichlet.json",
@@ -162,8 +166,10 @@ if __name__ == "__main__":
             )
 
             if args.record_client_data:
-                write_client_datasets(idx, writer, train_loader, True, args.get_index)
-                write_client_datasets(idx, writer, test_loader, False, args.get_index)
+                write_client_datasets(
+                    idx, writer, train_loader, True, args.get_index)
+                write_client_datasets(
+                    idx, writer, test_loader, False, args.get_index)
                 write_client_label_distribution(
                     idx, writer, train_loader, args.num_classes, args.get_index
                 )
@@ -185,7 +191,8 @@ if __name__ == "__main__":
         local_acc2 = train_result.acc_map["acc_avg2"]
         train_losses.append(round_loss)
         print(f"Train Loss: {round_loss}")
-        print(f"Local Accuracy on Local Data: {local_acc1:.2f}%, {local_acc2:.2f}%")
+        print(
+            f"Local Accuracy on Local Data: {local_acc1:.2f}%, {local_acc2:.2f}%")
         local_accs1.append(local_acc1)
         local_accs2.append(local_acc2)
 
@@ -197,5 +204,6 @@ if __name__ == "__main__":
                 )
                 local_client: FedClientBase = local_clients[idx]
                 torch.save(local_client.local_model.state_dict(), weights_path)
-            weights_path = os.path.join(weights_dir, f"global_ckpt_{round}.pth")
+            weights_path = os.path.join(
+                weights_dir, f"global_ckpt_{round}.pth")
             torch.save(server.global_model.state_dict(), weights_path)
