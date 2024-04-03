@@ -1,0 +1,13 @@
+cvxpy~=1.4.1
+GitPython~=3.1.40
+matplotlib~=3.7.1
+numpy~=1.24.3
+pandas~=1.5.3
+Pillow~=9.4.0
+pytorch_cinic~=0.0.6
+scikit_learn~=1.2.2
+seaborn~=0.13.0
+tensorboardX~=2.6.2.2
+torch~=2.1.0
+torchvision~=0.16.0
+tqdm~=4.65.0
