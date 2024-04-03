@@ -122,41 +122,33 @@ class FedServerBase:
     def analyze_hm_losses(
         client_idxs,
         round_losses,
-        local_acc1s,
-        local_acc2s,
+        local_accs,
         result: GlobalTrainResult,
         teacher_clients,
     ):
         num_clients = len(client_idxs)
         teacher_losses = []
-        teacher_acc1s = []
-        teacher_acc2s = []
+        teacher_accs = []
 
-        student_acc1s = []
-        student_acc2s = []
+        student_accs = []
         for i in range(num_clients):
             client_idx = client_idxs[i]
             round_loss = round_losses[i]
-            acc1 = local_acc1s[i]
-            acc2 = local_acc2s[i]
+            acc = local_accs[i]
             if client_idx in teacher_clients:
                 teacher_losses.append(round_loss)
-                teacher_acc1s.append(acc1)
-                teacher_acc2s.append(acc2)
+                teacher_accs.append(acc)
             else:
-                student_acc1s.append(acc1)
-                student_acc2s.append(acc2)
+                student_accs.append(acc)
 
         if len(teacher_losses) > 0:
             result.loss_map["teacher_avg_loss"] = sum(teacher_losses) / len(
                 teacher_losses
             )
-            result.acc_map["teacher_acc1"] = sum(teacher_acc1s) / len(teacher_acc1s)
-            result.acc_map["teacher_acc2"] = sum(teacher_acc2s) / len(teacher_acc2s)
-        
-        if len(student_acc1s) > 0:
-            result.acc_map["student_acc1"] = sum(student_acc1s) / len(student_acc1s)
-            result.acc_map["student_acc2"] = sum(student_acc2s) / len(student_acc2s)
+            result.acc_map["teacher_acc"] = sum(teacher_accs) / len(teacher_accs)
+           
+        if len(student_accs) > 0:
+            result.acc_map["student_acc"] = sum(student_accs) / len(student_accs)
 
     @abstractmethod
     def train_one_round(self, round: int):

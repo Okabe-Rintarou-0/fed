@@ -154,13 +154,10 @@ if __name__ == "__main__":
     for round in range(start_round, end_round):
         train_result = server.train_one_round(round)
         round_loss = train_result.loss_map["loss_avg"]
-        local_acc1 = train_result.acc_map["acc_avg1"]
-        local_acc2 = train_result.acc_map["acc_avg2"]
+        local_acc = train_result.acc_map["acc_avg"]
         train_losses.append(round_loss)
         print(f"Train Loss: {round_loss}")
-        print(f"Local Accuracy on Local Data: {local_acc1:.2f}%, {local_acc2:.2f}%")
-        local_accs1.append(local_acc1)
-        local_accs2.append(local_acc2)
+        print(f"Local Accuracy on Local Data: {local_acc:.2f}%")
 
         # save client weights every 5 epochs
         if (round + 1) % 5 == 0:
