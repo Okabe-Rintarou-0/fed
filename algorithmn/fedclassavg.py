@@ -45,21 +45,19 @@ class FedClassAvgServer(FedServerBase):
         teacher_agg_weights = []
 
         local_losses = []
-        local_acc1s = []
-        local_acc2s = []
+        local_accs = []
 
-        acc1_dict = {}
-        acc2_dict = {}
+        acc_dict = {}
         loss_dict = {}
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
-            local_acc1 = result.acc_map["acc1"]
-            local_acc2 = result.acc_map["acc2"]
+            local_acc = result.acc_map["acc"]
 
             agg_weight = local_client.agg_weight()
             agg_weights.append(agg_weight)
@@ -72,19 +70,19 @@ class FedClassAvgServer(FedServerBase):
                 student_agg_weights.append(agg_weight)
 
             local_losses.append(local_loss)
-            local_acc1s.append(local_acc1)
-            local_acc2s.append(local_acc2)
+            local_accs.append(local_acc)
 
-            acc1_dict[f"client_{idx}"] = local_acc1
-            acc2_dict[f"client_{idx}"] = local_acc2
+            acc_dict[f"client_{idx}"] = local_acc
             loss_dict[f"client_{idx}"] = local_loss
 
         classfier_weights = aggregate_weights(
             local_weights, agg_weights, self.client_aggregatable_weights
         )
 
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
 
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
@@ -95,16 +93,14 @@ class FedClassAvgServer(FedServerBase):
             local_client.update_local_classifier(classfier_weights)
 
         loss_avg = sum(local_losses) / len(local_losses)
-        acc_avg1 = sum(local_acc1s) / len(local_acc1s)
-        acc_avg2 = sum(local_acc2s) / len(local_acc2s)
+        acc_avg = sum(local_accs) / len(local_accs)
 
         result = GlobalTrainResult(
             loss_map={
                 "loss_avg": loss_avg,
             },
             acc_map={
-                "acc_avg1": acc_avg1,
-                "acc_avg2": acc_avg2,
+                "acc_avg": acc_avg,
             },
         )
 
@@ -112,18 +108,16 @@ class FedClassAvgServer(FedServerBase):
             self.analyze_hm_losses(
                 idx_clients,
                 local_losses,
-                local_acc1s,
-                local_acc2s,
+                local_accs,
                 result,
                 self.teacher_clients,
             )
 
         if self.writer is not None:
-            self.writer.add_scalars("clients_acc1", acc1_dict, round)
-            self.writer.add_scalars("clients_acc2", acc2_dict, round)
+            self.writer.add_scalars("clients_acc", acc_dict, round)
             self.writer.add_scalars("clients_loss", loss_dict, round)
             self.writer.add_scalars("server_acc_avg", result.acc_map, round)
-            self.writer.add_scalar("server_loss_avg", loss_avg, round)
+            self.writer.add_scalars("server_loss_avg", result.loss_map, round)
         return result
 
 
@@ -156,7 +150,6 @@ class FedClassAvgClient(FedClientBase):
         model.zero_grad()
         round_losses = []
         result = LocalTrainResult()
-        acc1 = self.local_test()
         # Set optimizer for the local updates
         optimizer = torch.optim.SGD(
             model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
@@ -164,7 +157,8 @@ class FedClassAvgClient(FedClientBase):
 
         with torch.no_grad():
             org_weights = (
-                weight_flatten_cls(model.state_dict()).detach().clone().to(self.device)
+                weight_flatten_cls(model.state_dict()
+                                   ).detach().clone().to(self.device)
             )
 
         for _ in range(local_epoch):
@@ -182,7 +176,8 @@ class FedClassAvgClient(FedClientBase):
                 features = model.featurize(images)
                 f1, f2 = torch.split(features, [bsz, bsz], dim=0)
                 features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-                cont_loss = self.args.cont_weight * self.cont_loss_fn(features, labels)
+                cont_loss = self.args.cont_weight * \
+                    self.cont_loss_fn(features, labels)
 
                 y_hat = model.classifier(f1)
                 cls_loss = self.criterion(y_hat, labels)
@@ -199,11 +194,10 @@ class FedClassAvgClient(FedClientBase):
                 optimizer.step()
                 round_losses.append(loss.item())
 
-        acc2 = self.local_test()
+        acc = self.local_test()
 
         result.weights = model.state_dict()
-        result.acc_map["acc1"] = acc1
-        result.acc_map["acc2"] = acc2
+        result.acc_map["acc"] = acc
         round_loss = np.sum(round_losses) / len(round_losses)
         result.loss_map["round_loss"] = round_loss
 
@@ -212,7 +206,9 @@ class FedClassAvgClient(FedClientBase):
         )
 
         if self.writer is not None:
-            self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-            self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
+            self.writer.add_scalars(
+                f"client_{self.idx}_acc", result.acc_map, round)
+            self.writer.add_scalar(
+                f"client_{self.idx}_loss", round_loss, round)
 
         return result
