@@ -44,11 +44,9 @@ class FedAvgServer(FedServerBase):
         teacher_agg_weights = []
 
         local_losses = []
-        local_acc1s = []
-        local_acc2s = []
+        local_accs = []
 
-        acc1_dict = {}
-        acc2_dict = {}
+        acc_dict = {}
         loss_dict = {}
 
         for idx in idx_clients:
@@ -57,8 +55,7 @@ class FedAvgServer(FedServerBase):
             result = local_client.local_train(local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
-            local_acc1 = result.acc_map["acc1"]
-            local_acc2 = result.acc_map["acc2"]
+            local_acc = result.acc_map["acc"]
 
             agg_weight = local_client.agg_weight()
             agg_weights.append(agg_weight)
@@ -71,11 +68,9 @@ class FedAvgServer(FedServerBase):
                 student_agg_weights.append(agg_weight)
 
             local_losses.append(local_loss)
-            local_acc1s.append(local_acc1)
-            local_acc2s.append(local_acc2)
+            local_accs.append(local_acc)
 
-            acc1_dict[f"client_{idx}"] = local_acc1
-            acc2_dict[f"client_{idx}"] = local_acc2
+            acc_dict[f"client_{idx}"] = local_acc
             loss_dict[f"client_{idx}"] = local_loss
 
         classfier_weights = aggregate_weights(
@@ -94,16 +89,14 @@ class FedAvgServer(FedServerBase):
             local_client.update_local_classifier(classfier_weights)
 
         loss_avg = sum(local_losses) / len(local_losses)
-        acc_avg1 = sum(local_acc1s) / len(local_acc1s)
-        acc_avg2 = sum(local_acc2s) / len(local_acc2s)
+        acc_avg = sum(local_accs) / len(local_accs)
 
         result = GlobalTrainResult(
             loss_map={
                 "loss_avg": loss_avg,
             },
             acc_map={
-                "acc_avg1": acc_avg1,
-                "acc_avg2": acc_avg2,
+                "acc_avg": acc_avg,
             },
         )
 
@@ -111,18 +104,16 @@ class FedAvgServer(FedServerBase):
             self.analyze_hm_losses(
                 idx_clients,
                 local_losses,
-                local_acc1s,
-                local_acc2s,
+                local_accs,
                 result,
                 self.teacher_clients,
             )
-
+        print(self.writer, result)
         if self.writer is not None:
-            self.writer.add_scalars("clients_acc1", acc1_dict, round)
-            self.writer.add_scalars("clients_acc2", acc2_dict, round)
+            self.writer.add_scalars("clients_acc", acc_dict, round)
             self.writer.add_scalars("clients_loss", loss_dict, round)
             self.writer.add_scalars("server_acc_avg", result.acc_map, round)
-            self.writer.add_scalar("server_loss_avg", loss_avg, round)
+            self.writer.add_scalars("server_loss_avg", result.loss_map, round)
         return result
 
 
@@ -152,7 +143,6 @@ class FedAvgClient(FedClientBase):
         model.zero_grad()
         round_losses = []
         result = LocalTrainResult()
-        acc1 = self.local_test()
         # Set optimizer for the local updates
         optimizer = torch.optim.SGD(
             model.parameters(), lr=self.args.lr, momentum=0.5, weight_decay=0.0005
@@ -173,11 +163,10 @@ class FedAvgClient(FedClientBase):
                 optimizer.step()
                 round_losses.append(loss.item())
 
-        acc2 = self.local_test()
+        acc = self.local_test()
 
         result.weights = model.state_dict()
-        result.acc_map["acc1"] = acc1
-        result.acc_map["acc2"] = acc2
+        result.acc_map["acc"] = acc
         round_loss = np.sum(round_losses) / len(round_losses)
         result.loss_map["round_loss"] = round_loss
 
@@ -185,8 +174,8 @@ class FedAvgClient(FedClientBase):
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
 
-        if self.writer is not None:
-            self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-            self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
+        # if self.writer is not None:
+            # self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
+            # self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result

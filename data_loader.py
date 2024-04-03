@@ -649,6 +649,7 @@ def get_dataloaders_from_json(
     args: Namespace, train_json_path: str, test_json_path: str
 ) -> Tuple[List[DataLoader], List[DataLoader]]:
     dataset = args.dataset
+    num_clients = args.num_clients
     local_bs = args.local_bs
     get_index = args.get_index
     double_trans = args.train_rule == "FedClassAvg"
@@ -674,13 +675,9 @@ def get_dataloaders_from_json(
         get_index,
     )
 
-    test_loaders = gen_data_loaders(
-        testset,
-        read_client_idxs_from_json(test_json_path),
-        local_bs,
-        False,
-        get_index,
-    )
+    
+    test_loaders = [DataLoader(
+        dataset=testset, shuffle=True, drop_last=True, batch_size=local_bs)] * num_clients
 
     return train_loaders, test_loaders
 
