@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 from algorithmn.base import FedClientBase
 from algorithmn.fedavg import FedAvgClient, FedAvgServer
+from algorithmn.fedclassavg import FedClassAvgClient, FedClassAvgServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
 from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
@@ -27,8 +28,8 @@ from tools import (
 )
 
 FL_CLIENT = {
-    "FedStandAlone": FedStandAloneClient,
     "FedAvg": FedAvgClient,
+    "FedClassAvg": FedClassAvgClient,
     "FedProx": FedProxClient,
     "FedL2Reg": FedL2RegClient,
     "pFedGraph": PFedGraphClient,
@@ -36,7 +37,7 @@ FL_CLIENT = {
 }
 
 FL_SERVER = {
-    "FedStandAlone": FedStandAloneServer,
+    "FedClassAvg": FedClassAvgServer,
     "FedAvg": FedAvgServer,
     "FedProx": FedProxServer,
     "FedL2Reg": FedL2RegServer,
