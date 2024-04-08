@@ -53,7 +53,8 @@ class FedProxServer(FedServerBase):
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc = result.acc_map["acc"]
@@ -79,8 +80,10 @@ class FedProxServer(FedServerBase):
             local_weights, agg_weights, self.client_aggregatable_weights
         )
 
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
 
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
@@ -154,7 +157,8 @@ class FedProxClient(FedClientBase):
 
         with torch.no_grad():
             org_weights = (
-                weight_flatten(model.state_dict()).detach().clone().to(self.device)
+                weight_flatten(model.state_dict()
+                               ).detach().clone().to(self.device)
             )
 
         for _ in range(local_epoch):
@@ -165,7 +169,8 @@ class FedProxClient(FedClientBase):
                 model.zero_grad()
                 _, output = model(images)
                 loss = self.criterion(output, labels)
-                cur_weights = weight_flatten(model.state_dict()).to(self.device)
+                cur_weights = weight_flatten(
+                    model.state_dict()).to(self.device)
                 loss += self.mu * self.mse_loss(cur_weights, org_weights)
                 loss.backward()
                 optimizer.step()
@@ -180,9 +185,5 @@ class FedProxClient(FedClientBase):
         print(
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
-
-        # if self.writer is not None:
-        #     self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-        #     self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result

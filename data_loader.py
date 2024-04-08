@@ -6,19 +6,15 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
-from torch import nn
 from algorithmn.transform import DoubleTransform
 from models.base import FedModel
 from pytorch_cinic.dataset import CINIC10
-from models.cnn import CifarCNN
 from models.mlp import FMNISTMLP, MNISTMLP, CifarMLP
 from models.resnet import (
     CifarResNet,
     EMNISTResNet,
     FMNISTResNet,
     MNISTResNet,
-    PACSResNet,
-    RMNISTResNet,
 )
 
 DATASET_PATH = "./data"
@@ -704,40 +700,6 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
         dataset=testset, shuffle=True, drop_last=True, batch_size=local_bs)] * num_clients
 
     return train_loaders, test_loaders
-
-
-def get_model(args: Namespace) -> nn.Module:
-    dataset = args.dataset.lower()
-    device = args.device
-    num_classes = args.num_classes
-    model_het = args.model_het
-    prob = args.prob
-    z_dim = args.z_dim
-    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        global_model = CifarCNN(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
-        args.lr = 0.02
-    elif dataset in ["pacs"]:
-        global_model = PACSResNet(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
-    elif dataset == "rmnist":
-        global_model = RMNISTResNet(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        )
-    else:
-        raise NotImplementedError()
-    return global_model.to(device)
 
 # get_models returns (student model and teacher model)
 

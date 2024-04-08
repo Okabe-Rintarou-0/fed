@@ -54,21 +54,6 @@ class FedTSServer(FedServerBase):
             amsgrad=False,
         )
 
-    def compute_avg_client_label_cnts(self):
-        num_labels = self.args.num_classes
-        label_avg_cnts = sum(
-            [
-                sum(
-                    [
-                        self.clients[t_idx].label_cnts[label]
-                        for t_idx in self.teacher_clients
-                    ]
-                )
-                for label in range(num_labels)
-            ]
-        ) // (len(self.teacher_clients) * num_labels)
-        return label_avg_cnts
-
     def get_label_weights(self, selected_clients):
         label_weights = []
         qualified_labels = []
@@ -113,7 +98,7 @@ class FedTSServer(FedServerBase):
                                         torch.log(logits + 1e-24), dim=1)
 
                     teacher_entropies.append(entropy)
-                    print(client_output.shape, y_input.shape)
+
                     teacher_loss = (
                         self.generator.crossentropy_loss(
                             client_output, y_input)
@@ -221,7 +206,6 @@ class FedTSServer(FedServerBase):
         for i in range(len(local_agg_weights)):
             local_agg_weights[i] /= sum_local_agg_weights
         agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
-        tmp = torch.tensor(local_agg_weights)
 
         classifier_weights = aggregate_weights(
             local_weights, agg_weight, self.client_aggregatable_weights
@@ -295,21 +279,6 @@ class FedTSClient(FedClientBase):
         self.lam3 = args.lam3 * gen_ratio
         self.lam4 = args.lam4
 
-    def get_local_protos(self):
-        model = self.local_model
-        local_protos_list = {}
-        for inputs, labels in self.train_loader:
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
-            features, _ = model(inputs)
-            protos = features.clone().detach()
-            for i in range(len(labels)):
-                if labels[i].item() in local_protos_list.keys():
-                    local_protos_list[labels[i].item()].append(protos[i, :])
-                else:
-                    local_protos_list[labels[i].item()] = [protos[i, :]]
-        local_protos = get_protos(local_protos_list)
-        return local_protos
-
     def local_train(self, local_epoch: int, round: int) -> LocalTrainResult:
         print(f"[client {self.idx}] local train round {round}:")
         model = self.local_model.to(self.device)
@@ -377,9 +346,4 @@ class FedTSClient(FedClientBase):
         print(
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
-
-        # if self.writer is not None:
-        #     self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-        #     self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
-
         return result

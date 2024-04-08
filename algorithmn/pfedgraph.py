@@ -5,7 +5,6 @@ from tensorboardX import SummaryWriter
 import torch
 from torch.utils.data import DataLoader
 from algorithmn.base import FedClientBase, FedServerBase
-from torch import nn
 import numpy as np
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
@@ -32,7 +31,8 @@ class PFedGraphServer(FedServerBase):
         self.initial_global_parameters = global_model.state_dict()
         self.aggregatable_weights = global_model.get_aggregatable_weights()
         num_clients = len(clients)
-        self.adjacency_matrix = torch.ones((num_clients, num_clients)) / num_clients
+        self.adjacency_matrix = torch.ones(
+            (num_clients, num_clients)) / num_clients
         self.teacher_clients = args.teacher_clients
 
     def train_one_round(self, round: int) -> GlobalTrainResult:
@@ -63,7 +63,8 @@ class PFedGraphServer(FedServerBase):
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc = result.acc_map["acc"]
@@ -106,8 +107,10 @@ class PFedGraphServer(FedServerBase):
             self.aggregatable_weights,
         )
 
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
 
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]

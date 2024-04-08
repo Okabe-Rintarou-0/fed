@@ -52,7 +52,8 @@ class FedAvgServer(FedServerBase):
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc = result.acc_map["acc"]
@@ -77,8 +78,10 @@ class FedAvgServer(FedServerBase):
             local_weights, agg_weights, self.client_aggregatable_weights
         )
 
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
 
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
@@ -173,9 +176,5 @@ class FedAvgClient(FedClientBase):
         print(
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
-
-        # if self.writer is not None:
-            # self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-            # self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result

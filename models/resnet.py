@@ -72,7 +72,7 @@ class ResNetBase(FedModel):
         else:
             z_params = x
             z_mu = z_params[:, : self.z_dim]
-            z_sigma = F.softplus(z_params[:, self.z_dim :])
+            z_sigma = F.softplus(z_params[:, self.z_dim:])
             z_dist = distributions.Independent(
                 distributions.normal.Normal(z_mu, z_sigma), 1
             )
@@ -96,7 +96,7 @@ class ResNetBase(FedModel):
         else:
             z_params = x
             z_mu = z_params[:, : self.z_dim]
-            z_sigma = F.softplus(z_params[:, self.z_dim :])
+            z_sigma = F.softplus(z_params[:, self.z_dim:])
             z_dist = distributions.Independent(
                 distributions.normal.Normal(z_mu, z_sigma), 1
             )
@@ -167,34 +167,4 @@ class FMNISTResNet(ResNetBase):
     ):
         super().__init__(
             num_classes, probabilistic, num_samples, backbone, model_het, z_dim, 1
-        )
-
-
-class RMNISTResNet(ResNetBase):
-    def __init__(
-        self,
-        num_classes=10,
-        probabilistic=False,
-        num_samples=1,
-        backbone="resnet18",
-        model_het=False,
-        z_dim=128,
-    ):
-        super().__init__(
-            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
-        )
-
-
-class PACSResNet(ResNetBase):
-    def __init__(
-        self,
-        num_classes=7,
-        probabilistic=False,
-        num_samples=1,
-        backbone="resnet18",
-        model_het=False,
-        z_dim=128,
-    ):
-        super().__init__(
-            num_classes, probabilistic, num_samples, backbone, model_het, z_dim
         )

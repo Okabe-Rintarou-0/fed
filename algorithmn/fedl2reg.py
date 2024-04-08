@@ -53,7 +53,8 @@ class FedL2RegServer(FedServerBase):
         for idx in idx_clients:
             local_client: FedClientBase = self.clients[idx]
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = copy.deepcopy(result.weights)
             local_loss = result.loss_map["round_loss"]
             local_acc = result.acc_map["acc"]
@@ -82,8 +83,10 @@ class FedL2RegServer(FedServerBase):
         )
         # update global prototype
         global_protos = aggregate_protos(local_protos, label_sizes)
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
 
         for local_client in self.clients:
             if local_client.idx in self.teacher_clients:
@@ -194,7 +197,8 @@ class FedL2RegClient(FedClientBase):
                 loss = loss0 + self.args.lam * loss1 + self.args.l2r_coeff * loss2
                 loss.backward()
                 max_grad_norm = 1
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), max_grad_norm)
                 optimizer.step()
                 iter_loss.append(loss.item())
             round_losses.append(sum(iter_loss) / len(iter_loss))
@@ -210,9 +214,5 @@ class FedL2RegClient(FedClientBase):
         print(
             f"[client {self.idx}] local train acc: {result.acc_map}, loss: {result.loss_map}"
         )
-
-        # if self.writer is not None:
-        #     self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
-        #     self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
         return result
