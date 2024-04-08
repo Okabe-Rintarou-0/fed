@@ -12,6 +12,7 @@ python hm_main.py --train_rule FedTS --local_bs 64 --dataset cifar --beta 0.5 --
   + `FedL2Reg`
   + `FedProx`
   + `pFedGraph` 
+  + `FedClassAvg`
 
 
 ## Scripts

@@ -1,7 +1,6 @@
 from argparse import Namespace
 import json
 import os
-import random
 from typing import List, Tuple
 import numpy as np
 import torch
@@ -9,7 +8,6 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset
 from torch import nn
 from algorithmn.transform import DoubleTransform
-from datasets import PACS, MultipleDomainDataset, RotatedMNIST
 from models.base import FedModel
 from pytorch_cinic.dataset import CINIC10
 from models.cnn import CifarCNN
@@ -557,88 +555,6 @@ def cifar100_dataset() -> Tuple[Dataset, Dataset]:
     return trainset, testset
 
 
-def get_dg_dataloaders(
-    dataset: MultipleDomainDataset, test_env, num_clients, batch_size, get_index
-):
-    train_env = list(range(len(dataset.ENVIRONMENTS)))
-    train_env.remove(test_env)
-    train_loaders, test_loaders = [None] * num_clients, []
-    num_train_env = len(train_env)
-
-    train_client_idxs = [[] for _ in range(num_clients)]
-    test_client_idxs = [[] for _ in range(num_clients)]
-
-    env_num_clients_map = {}
-    for i in range(num_train_env):
-        env_num_clients_map[i] = num_clients // num_train_env
-
-    for i in range(num_clients % num_train_env):
-        env_num_clients_map[i] += 1
-
-    for i in range(num_train_env):
-        env = train_env[i]
-        train_dataset = dataset[env]
-
-        dataset_len = len(dataset[env])
-        all_idxs = list(range(dataset_len))
-
-        env_num_clients = env_num_clients_map[i]
-        data_size_per_client = dataset_len // env_num_clients
-        for j in range(env_num_clients):
-            idx = i + j * num_train_env
-            select_set = set(
-                np.random.choice(all_idxs, data_size_per_client, replace=False)
-            )
-            all_idxs = list(set(all_idxs) - select_set)
-            client_idxs = list(map(int, list(select_set)))
-            train_client_idxs[idx] = client_idxs
-            splitted_dataset = DatasetSplit(
-                dataset=train_dataset, index=client_idxs, get_index=get_index
-            )
-            train_loaders[idx] = DataLoader(
-                dataset=splitted_dataset, batch_size=batch_size, shuffle=True
-            )
-
-    test_dataset = DatasetSplit(dataset=dataset[test_env], get_index=get_index)
-
-    for idx in range(num_clients):
-        test_loader = DataLoader(
-            dataset=test_dataset, batch_size=batch_size, shuffle=False
-        )
-        test_loaders.append(test_loader)
-        test_client_idxs[idx] = list(range(len(test_dataset)))
-
-    return train_loaders, test_loaders
-
-
-def pacs(
-    num_clients: int, batch_size: int, get_index: bool, test_env=0
-) -> Tuple[List[DataLoader], List[DataLoader]]:
-    pacs_dataset = PACS(root=DATASET_PATH, test_envs=[test_env], augment=False)
-    return get_dg_dataloaders(
-        dataset=pacs_dataset,
-        test_env=test_env,
-        num_clients=num_clients,
-        batch_size=batch_size,
-        get_index=get_index,
-    )
-
-
-def rmnist(
-    num_clients: int, batch_size: int, get_index: bool, test_env=0
-) -> Tuple[List[DataLoader], List[DataLoader]]:
-    rmnist_dataset = RotatedMNIST(
-        root=DATASET_PATH, test_envs=[test_env], augment=False
-    )
-    return get_dg_dataloaders(
-        dataset=rmnist_dataset,
-        test_env=test_env,
-        num_clients=num_clients,
-        batch_size=batch_size,
-        get_index=get_index,
-    )
-
-
 def read_client_idxs_from_json(json_path: str):
     with open(json_path, "r") as f:
         client_idxs = json.loads(f.read())
@@ -675,7 +591,6 @@ def get_dataloaders_from_json(
         get_index,
     )
 
-    
     test_loaders = [DataLoader(
         dataset=testset, shuffle=True, drop_last=True, batch_size=local_bs)] * num_clients
 
@@ -698,9 +613,6 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
             train_loaders = mnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = mnist_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = mnist_noniid_dirichlet(
                 trainset,
@@ -710,23 +622,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = mnist_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
     elif dataset in ["cifar10", "cifar"]:
         trainset, testset = cifar10_dataset()
         if iid:
             train_loaders = cifar10_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = cifar10_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = cifar10_noniid_dirichlet(
                 trainset,
@@ -736,23 +637,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = cifar10_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
     elif dataset in ["cinic", "cinic10"]:
         trainset, testset = cinic10_dataset()
         if iid:
             train_loaders = cinic10_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = cinic10_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = cinic10_noniid_dirichlet(
                 trainset,
@@ -762,23 +652,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = cinic10_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
     elif dataset in ["fmnist"]:
         trainset, testset = fmnist_dataset()
         if iid:
             train_loaders = fmnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = fmnist_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = fmnist_noniid_dirichlet(
                 trainset,
@@ -788,23 +667,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = fmnist_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
     elif dataset in ["emnist"]:
         trainset, testset = emnist_dataset()
         if iid:
             train_loaders = emnist_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = emnist_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = emnist_noniid_dirichlet(
                 trainset,
@@ -814,23 +682,12 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = emnist_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
     elif dataset in ["cifar100"]:
         trainset, testset = cifar100_dataset()
         if iid:
             train_loaders = cifar100_iid(
                 trainset, num_clients, local_bs, shuffle=True, get_index=get_index
             )
-            # test_loaders = cifar100_iid(
-            #     testset, num_clients, local_bs, shuffle=False, get_index=get_index
-            # )
         else:
             train_loaders = cifar100_noniid_dirichlet(
                 trainset,
@@ -840,18 +697,6 @@ def get_dataloaders(args: Namespace) -> Tuple[List[DataLoader], List[DataLoader]
                 shuffle=True,
                 get_index=get_index,
             )
-            # test_loaders = cifar100_noniid_dirichlet(
-            #     testset,
-            #     num_clients,
-            #     args.beta,
-            #     local_bs,
-            #     shuffle=False,
-            #     get_index=get_index,
-            # )
-    elif dataset in ["pacs"]:
-        return pacs(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
-    elif dataset in ["rmnist"]:
-        return rmnist(num_clients=num_clients, batch_size=local_bs, get_index=get_index)
     else:
         raise NotImplementedError()
 
@@ -894,28 +739,9 @@ def get_model(args: Namespace) -> nn.Module:
         raise NotImplementedError()
     return global_model.to(device)
 
-
-def get_heterogeneous_model(args: Namespace) -> nn.Module:
-    dataset = args.dataset
-    device = args.device
-    num_classes = args.num_classes
-    model_het = args.model_het
-    prob = args.prob
-    z_dim = args.z_dim
-    if dataset in ["cifar", "cifar10", "cinic", "cinic_sep"]:
-        heterogeneous_model = CifarResNet(
-            num_classes=num_classes,
-            probabilistic=prob,
-            model_het=model_het,
-            z_dim=z_dim,
-        ).to(device)
-        args.lr = 0.02
-    else:
-        raise NotImplementedError()
-    return heterogeneous_model
-
-
 # get_models returns (student model and teacher model)
+
+
 def get_models(args: Namespace) -> Tuple[FedModel, FedModel]:
     dataset = args.dataset
     num_classes = args.num_classes

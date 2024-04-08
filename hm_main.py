@@ -9,7 +9,6 @@ from algorithmn.fedavg import FedAvgClient, FedAvgServer
 from algorithmn.fedclassavg import FedClassAvgClient, FedClassAvgServer
 from algorithmn.fedl2reg import FedL2RegClient, FedL2RegServer
 from algorithmn.fedprox import FedProxServer, FedProxClient
-from algorithmn.fedstandalone import FedStandAloneClient, FedStandAloneServer
 from algorithmn.fedts import FedTSClient, FedTSServer
 from algorithmn.pfedgraph import PFedGraphClient, PFedGraphServer
 
@@ -22,7 +21,7 @@ from options import parse_args
 from tensorboardX import SummaryWriter
 
 from tools import (
-    draw_label_dist,
+    # draw_label_dist,
     write_client_datasets,
     write_client_label_distribution,
 )
@@ -94,8 +93,6 @@ if __name__ == "__main__":
         sub_dir_name = f"{sub_dir_name}_prob"
     if not args.iid:
         sub_dir_name = f"{sub_dir_name}_non_iid"
-    if args.domain_het:
-        sub_dir_name = f"{sub_dir_name}_domain_het"
     if args.model_het:
         sub_dir_name = f"{sub_dir_name}_model_het"
 
@@ -177,7 +174,7 @@ if __name__ == "__main__":
             local_clients.append(client)
             dists.append(client.label_distribution())
             bar.update(1)
-    draw_label_dist(dists, args.num_classes)
+    # draw_label_dist(dists, args.num_classes)
 
     server = Server(
         args=args, global_model=student_model, clients=local_clients, writer=writer

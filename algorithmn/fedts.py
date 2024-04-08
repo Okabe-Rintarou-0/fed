@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from algorithmn.models import GlobalTrainResult, LocalTrainResult
 from models.base import FedModel
-from models.generator import Generator
+from models.generator import Generator, ProbGenerator
 from tools import (
     aggregate_weights,
     cal_cosine_difference_vector,
@@ -33,6 +33,8 @@ class FedTSServer(FedServerBase):
         self.alpha = args.alpha
         self.max_round = args.epochs
         self.generator = Generator(
+            num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
+        ) if not args.prob_generator else ProbGenerator(
             num_classes=args.num_classes, z_dim=args.z_dim, dataset=args.dataset
         )
         global_model.to(self.device)
@@ -78,7 +80,8 @@ class FedTSServer(FedServerBase):
                 qualified_labels.append(label)
             # uniform
             label_weights.append(np.array(weights) / np.sum(weights))
-        label_weights = np.array(label_weights).reshape((self.unique_labels, -1))
+        label_weights = np.array(label_weights).reshape(
+            (self.unique_labels, -1))
         return label_weights, qualified_labels
 
     def train_generator(self, round, epoches=1, n_teacher_iters=64):
@@ -94,21 +97,26 @@ class FedTSServer(FedServerBase):
             for _ in range(n_teacher_iters):
                 self.generator.zero_grad()
                 y = np.random.choice(self.qualified_labels, local_bs)
-                y_input = F.one_hot(torch.LongTensor(y), self.unique_labels).float()
+                y_input = F.one_hot(torch.LongTensor(
+                    y), self.unique_labels).float().to(self.device)
                 gen_output, _ = self.generator(y_input)
                 teacher_losses = []
                 teacher_entropies = []
                 for client_idx, client in enumerate(self.selected_clients):
                     client.local_model.eval()
-                    weight = self.label_weights[y][:, client_idx].reshape(-1, 1)
+                    weight = self.label_weights[y][:,
+                                                   client_idx].reshape(-1, 1)
                     client_output = client.local_model.classifier(gen_output)
 
                     logits = F.softmax(client_output, dim=1)
-                    entropy = torch.sum(-logits * torch.log(logits + 1e-24), dim=1)
+                    entropy = torch.sum(-logits *
+                                        torch.log(logits + 1e-24), dim=1)
 
                     teacher_entropies.append(entropy)
+                    print(client_output.shape, y_input.shape)
                     teacher_loss = (
-                        self.generator.crossentropy_loss(client_output, y_input)
+                        self.generator.crossentropy_loss(
+                            client_output, y_input)
                         * torch.tensor(weight, dtype=torch.float32).squeeze()
                     )
 
@@ -120,7 +128,7 @@ class FedTSServer(FedServerBase):
                 ratio = (
                     1.0
                     if client.idx in self.teacher_clients
-                    else (round + 1) / self.args.epochs
+                    else self.args.tau * (round + 1) / self.args.epochs
                 )
                 losses = torch.mean(
                     teacher_losses * entropy_weights * self.args.eta * ratio, dim=1
@@ -168,7 +176,8 @@ class FedTSServer(FedServerBase):
             local_client: FedTSClient = self.clients[idx]
             self.selected_clients.append(local_client)
             local_epoch = self.args.local_epoch
-            result = local_client.local_train(local_epoch=local_epoch, round=round)
+            result = local_client.local_train(
+                local_epoch=local_epoch, round=round)
             w = result.weights
             local_weights_map[idx] = w
             local_loss = result.loss_map["round_loss"]
@@ -198,8 +207,10 @@ class FedTSServer(FedServerBase):
                 student_accs.append(local_acc)
                 student_label_sizes.append(label_cnts)
 
-        student_weights = aggregate_weights(student_weights, student_agg_weights)
-        teacher_weights = aggregate_weights(teacher_weights, teacher_agg_weights)
+        student_weights = aggregate_weights(
+            student_weights, student_agg_weights)
+        teacher_weights = aggregate_weights(
+            teacher_weights, teacher_agg_weights)
         dv = cal_cosine_difference_vector(
             idx_clients,
             self.initial_global_weights,
@@ -211,7 +222,6 @@ class FedTSServer(FedServerBase):
             local_agg_weights[i] /= sum_local_agg_weights
         agg_weight = optimize_collaborate_vector(dv, alpha, local_agg_weights)
         tmp = torch.tensor(local_agg_weights)
-        print(agg_weight, (tmp / torch.sum(tmp)).tolist())
 
         classifier_weights = aggregate_weights(
             local_weights, agg_weight, self.client_aggregatable_weights
@@ -278,10 +288,6 @@ class FedTSClient(FedClientBase):
         self.mse_loss = torch.nn.MSELoss()
         self.label_cnts = self.label_distribution()
         self.available_labels = self.args.num_classes
-        label_cnts_list = [
-            self.label_cnts[label] for label in range(self.available_labels)
-        ]
-        avg_label_cnts = int(np.mean(label_cnts_list).item())
         self.gen_batch_size = args.gen_batch_size
         gen_ratio = args.gen_batch_size / args.local_bs
         self.lam1 = args.lam1
@@ -339,7 +345,8 @@ class FedTSClient(FedClientBase):
                     # classifier loss
                     sampled_y = torch.tensor(
                         np.random.choice(
-                            list(range(self.available_labels)), self.gen_batch_size
+                            list(range(self.available_labels)
+                                 ), self.gen_batch_size
                         ),
                         device=self.device,
                     )
@@ -375,6 +382,4 @@ class FedTSClient(FedClientBase):
         #     self.writer.add_scalars(f"client_{self.idx}_acc", result.acc_map, round)
         #     self.writer.add_scalar(f"client_{self.idx}_loss", round_loss, round)
 
-        self.clear_memory()
-        self.generator.to("cpu")
         return result
